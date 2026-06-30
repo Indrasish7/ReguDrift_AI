@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ==========================================================
+  # Qdrant: Production Vector Database Cluster Engine
+  # ==========================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: regudrift-qdrant
+    ports:
+      - "6333:6333"  # HTTP interface port
+      - "6334:6334"  # gRPC interface port
+    volumes:
+      # Persistent volume mapping to preserve indexed vector structures
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - regunet
+    restart: unless-stopped
+
+  # ==========================================================
+  # Web: Asynchronous REST Gateway and Agent Orchestrator
+  # ==========================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: regudrift-web
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent sqlite DB volume mount
+      - sqlite_data:/app/data
+    env_file:
+      - .env
+    environment:
+      - ENV=production
+      - VECTOR_STORE_PROVIDER=qdrant
+      - QDRANT_URL=http://qdrant:6333  # Resolved via container network bridge DNS
+      - DATABASE_URL=sqlite+aiosqlite:///./data/regudrift.db
+    depends_on:
+      - qdrant  # Boots after the qdrant container launches
+    networks:
+      - regunet
+    restart: unless-stopped
+
+  # ==========================================================
+  # UI: Streamlit SaaS Compliance auditing Command Center
+  # ==========================================================
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: regudrift-ui
+    ports:
+      - "8501:8501"  # Maps Streamlit port to the host
+    env_file:
+      - .env
+    environment:
+      - BACKEND_URL=http://web:8000  # Resolves backend API via network bridge DNS
+    depends_on:
+      - web  # Boots after the web container launches
+    networks:
+      - regunet
+    restart: unless-stopped
+
+  # ==========================================================
+  # Frontend: Premium Next.js App Router CISO Command Center
+  # ==========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: regudrift-frontend
+    ports:
+      - "3000:3000"  # Maps Next.js server port to the host
+    depends_on:
+      - web  # Boots after the backend API is online
+    networks:
+      - regunet
+    restart: unless-stopped
+
+# Persistent volume allocations
+volumes:
+  qdrant_storage:
+  sqlite_data:
+
+# Isolate services on a secure network bridge model
+networks:
+  regunet:
+    driver: bridge

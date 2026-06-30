@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0B0F19; /* Midnight Navy Background */
+    color: #e5e2e2; /* On-Surface White */
+  }
+
+  /* Custom high-density scrollbar to align with CISO Command Center aesthetics */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #0e0e0f; /* surface-container-lowest */
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #46464c; /* outline-variant */
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #909096; /* outline */
+  }
+}

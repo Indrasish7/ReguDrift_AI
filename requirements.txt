@@ -1,0 +1,36 @@
+# FastAPI and Server Core
+fastapi==0.129.0
+uvicorn==0.41.0
+
+# Type Validation and Settings
+pydantic==2.12.5
+pydantic-settings==2.12.0
+
+# Relational Database Persistence
+SQLAlchemy==2.0.46
+aiosqlite==0.22.1
+
+
+# Asynchronous HTTP Client and Utilities
+httpx==0.28.1
+anyio==4.12.1
+
+# Document Ingestion and Parsing
+pypdf==4.2.0
+
+# Cryptography and Data Processing
+numpy==2.4.3
+
+# Google GenAI SDK (Modern Unified Library)
+google-genai==0.3.0
+
+# Vector Database SDKs
+faiss-cpu==1.8.0
+qdrant-client==1.9.0
+
+# Form processing for FastAPI ingestion
+python-multipart==0.0.29
+
+# PDF Generation Engine
+fpdf2==2.8.2
+

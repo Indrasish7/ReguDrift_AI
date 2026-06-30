@@ -1,0 +1,28 @@
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.tox/
+.venv/
+venv/
+env/
+
+# Relational Database persistence paths
+*.db
+data/
+regudrift.db
+
+# Developer files
+.git/
+.gitignore
+.env
+Dockerfile
+docker-compose.yml
+README.md
+C:\Users\**
+
+# Agent logging and local debug tracks
+.system_generated/
+*.log
