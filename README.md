@@ -9,13 +9,19 @@ The system automates the detection of compliance gaps, calculates drift indices,
 ## 🚀 Key Features
 
 *   **Multi-Tier Service Orchestration:** Fully containerized 4-tier microservices cluster bridging Next.js 14, Streamlit, FastAPI, and Qdrant in an isolated network.
-*   **Asynchronous Policy Chunker & Ingestion:** Async parser that processes PDF/TXT documents, segments them into logical hierarchies (Chapters, Sections, Clauses), hashes each clause deterministically (SHA-256) to prevent deduplication issues, and generates 3072-dimensional vector embeddings.
+*   **Asynchronous Policy Chunker & Ingestion:** Async parser that processes PDF/TXT documents, segments them into logical hierarchies (Chapters, Sections, Clauses), hashes each clause deterministically (SHA-256) to prevent deduplication, and generates 3072-dimensional vector embeddings.
 *   **Agentic Planner-Executor Audit Loop:** An LLM-powered state machine (`PlanCreation` -> `ContextRetrieval` -> `GapAnalysis` -> `FinalReport`) that reasons about compliance alignment, maps specific deviations, and outlines remediation paths.
-*   **Dual Frontend Consoles:**
-    *   **Next.js 14 Web Portal:** High-density, premium dashboard mapping visual design tokens, containing a live gateway health checking system, a split-pane *Drift Inspector*, and a boardroom print compilation engine.
-    *   **Streamlit Operations Center:** Operational control room supporting direct policy indexing, real-time audit consoles, interactive severity maps, and custom PDF report downloads.
-*   **Corporate FPDF2 PDF Generator:** Formats audit findings into professional executive reports featuring custom-branded navy headers, slate-divided tables, risk-colored status badges, and monospace code blocks.
-*   **Gemini Schema Sanitizer:** Elegant backend schema inlining and cleaning that circumvents GenAI API limitations regarding nested `$defs`, `$ref`, and `"title"` annotations.
+*   **1. Git CI/CD Integration ("The Commit Blamer"):** Attaches Git commit tracking metadata (`commit_hash`, `author_name`, `commit_timestamp`, `branch_name`) directly to compliance runs and specific drift remediation blocks, providing instant traceability for infrastructure-as-code audits.
+*   **2. Historical Trend Analytics Service:** Aggregates compliance run histories chronologically by date via `/api/v1/analytics/compliance-history`. Dynamically calculates a `global_health_score` (100% baseline, deducting 15% per `CRITICAL`, 10% per `HIGH`, 5% per `MEDIUM`, and 2% per `LOW` severity drift) and tracks `total_critical_drifts`.
+*   **3. Role-Based Access Control (RBAC) System:** Enforces endpoint access verification using HTTP headers (`X-User-Role`) or query params (`role`):
+    *   `Auditor`: Read-only access to health endpoints and the historical compliance analytics feed.
+    *   `SecOps_Admin`: Full write access allowing policy ingestion, audits, database resets, and connection updates.
+*   **4. Immersive Bento HUD Dark Mode Redesign:** A modern, high-density Bento Grid dashboard in deep space dark mode featuring:
+    *   *Floating Glass Header:* Hosts navigation tabs, live health connections, and the RBAC role switcher.
+    *   *Sonar Radar Scanner:* Dynamic rotating circular SVG scanning animation showing active audit progress.
+    *   *Interactive Git Graph:* Clickable vertical SVG commit graph that dynamically blame-traces commits and updates dashboard compliance metrics.
+    *   *Comparative Diff Inspector:* Side-by-side color-coded policy alignments highlighting exact drift lines and Git metadata context tags.
+    *   *Cloud Shell Terminal:* Sleek monospace console replica (Terraform/Python) supporting boardroom PDF downloads.
 
 ---
 
@@ -23,11 +29,11 @@ The system automates the detection of compliance gaps, calculates drift indices,
 
 ```mermaid
 graph TD
-    A[User Web Client] -->|Port 3000| B(Next.js 14 Frontend)
+    A[User Web Client] -->|Port 3000| B(Next.js 14 Bento Grid Frontend)
     A -->|Port 8501| C(Streamlit Dashboard)
     B -->|REST / CORS| D(FastAPI Gateway API)
     C -->|REST / CORS| D
-    D -->|Semantic Retrival| E(Qdrant Vector DB)
+    D -->|Semantic Retrieval| E(Qdrant Vector DB)
     D -->|CRUD / Runs logs| F(SQLite Relational DB)
     D -->|Async Embeddings / JSON Schemas| G(Google Gemini AI Engine)
 ```
@@ -48,8 +54,7 @@ d:\Problem Project\
 ├── requirements.txt            # Pinned backend dependencies
 ├── Dockerfile                  # Multi-stage secure FastAPI container build
 ├── docker-compose.yml          # 4-tier microservices orchestration manifest
-├── .dockerignore               # Docker build exclusions
-├── .gitignore                  # Git VCS exclusions
+├── .env                        # Local environment variables
 ├── main.py                     # Root FastAPI Gateway application entrypoint
 ├── regudrift/
 │   ├── config/
@@ -68,7 +73,7 @@ d:\Problem Project\
 │       │   └── embedder.py     # Batch embedder using google-genai SDK
 │       └── vector/
 │           ├── base.py         # Vector database abstraction definition
-│           └── qdrant_service.py # Async production Qdrant integration
+│           └── qdrant_service.py # Async Qdrant integration
 ├── ui/
 │   ├── app.py                  # Streamlit SaaS command dashboard
 │   ├── reporter.py             # FPDF2 corporate PDF report builder
@@ -79,12 +84,12 @@ d:\Problem Project\
     ├── Dockerfile              # Multi-stage Node.js alpine build configuration
     └── src/
         ├── app/
-        │   ├── layout.tsx      # App wrapper with custom fonts (Hanken Grotesk, Inter)
-        │   └── page.tsx        # CISO dashboard and split-screen Drift Inspector
+        │   ├── layout.tsx      # App wrapper with custom fonts (Inter, JetBrains Mono)
+        │   └── page.tsx        # Bento Grid dashboard, Git Graph, and Radar Scanner
         ├── components/
-        │   ├── Sidebar.tsx     # Vertical navigation featuring dynamic API health polling
-        │   ├── MetricCards.tsx # SVG gauge components for KPI rendering
-        │   └── Remediation.tsx # Tabbed monospace code console (Terraform/Python)
+        │   ├── Sidebar.tsx     # Floating glass top header bar component
+        │   ├── MetricCards.tsx # Bento metric cards and sparkline trend component
+        │   └── Remediation.tsx # Obsidian Cloud Shell monospace terminal console
         └── lib/
             └── api.ts          # Axios network client bridge
 ```
@@ -105,7 +110,7 @@ GEMINI_API_KEY=your_actual_gemini_api_key_here
 ```
 
 ### 2. Build & Launch the Containers
-To pull images, compile the Next.js production build, and start the services in detatched mode, run:
+To pull images, compile the Next.js production build, and start the services in detached mode, run:
 ```bash
 docker compose up --build -d
 ```
@@ -124,24 +129,34 @@ All four containers (`regudrift-frontend`, `regudrift-ui`, `regudrift-web`, and 
 ### 1. Ingest Internal Policy
 *   **Endpoint:** `POST /api/v1/compliance/ingest`
 *   **Content-Type:** `multipart/form-data`
+*   **Headers:** `X-User-Role: SecOps_Admin` (Required)
 *   **Fields:**
-    *   `policy_id` (string): Unique identifier for the policy (e.g., `telemetry_v3`).
+    *   `document_id` (string): Unique identifier for the policy.
     *   `file` (file): Uploaded PDF or TXT file.
 *   **Description:** Parses the uploaded policy into semantic chunks, generates vector embeddings, indexes them into Qdrant, and creates a relational entry in SQLite.
 
-### 2. Execute Gap Audit
+### 2. Execute Gap Audit (with Commit Blamer)
 *   **Endpoint:** `POST /api/v1/compliance/analyze`
 *   **Content-Type:** `application/json`
+*   **Headers:** `X-User-Role: SecOps_Admin` (Required)
 *   **Payload:**
     ```json
     {
-      "policy_id": "telemetry_v3",
-      "regulatory_text": "Paste regulatory directive text here..."
+      "update_text": "Regulatory directive bulletin text...",
+      "commit_hash": "a1b2c3d4",
+      "author_name": "Dev DevOps",
+      "commit_timestamp": "2026-07-17T12:00:00Z",
+      "branch_name": "release/v1.1"
     }
     ```
-*   **Description:** Triggers the Planner-Executor agentic state machine. Performs semantic lookup, conducts comparative alignment analysis, writes the audit output to SQLite, and returns a detailed compliance gap report.
+*   **Description:** Triggers the Planner-Executor agentic state machine. Performs semantic lookup, conducts comparative alignment analysis, writes the audit output to SQLite, and returns a detailed compliance gap report with Git blamer tags.
 
-### 3. Health Diagnostics
+### 3. Historical Trend Analytics
+*   **Endpoint:** `GET /api/v1/analytics/compliance-history`
+*   **Headers:** `X-User-Role: Auditor` or `SecOps_Admin` (Required)
+*   **Description:** Aggregates compliance runs chronologically by date tracking global health scores, critical drifts, and timestamps.
+
+### 4. Health Diagnostics
 *   **Endpoint:** `GET /health`
 *   **Description:** Performs automated connection checks against SQLite and Qdrant. Returns `{ "status": "ok" }` if all internal adapters are healthy.
 
@@ -149,15 +164,11 @@ All four containers (`regudrift-frontend`, `regudrift-ui`, `regudrift-web`, and 
 
 ## 🎨 UI/UX Design System Specifications
 
-The application uses design tokens configured directly from the high-fidelity **Stitch** specification to maintain visual consistency:
-*   **Canvas Background:** Midnight Navy (`#0B0F19`)
-*   **Elevated Surfaces:** Surface Dim Slate (`#131314` / `#201f20`)
-*   **Dividers & Borders:** Outlines (`#46464c`)
-*   **Alert Semantics:** Compliant (`#10B981`), Partial (`#F59E0B`), Non-Compliant (`#EF4444`)
-*   **Typography Hierarchy:**
-    *   *Display / Headlines:* Hanken Grotesk
-    *   *Body Copy:* Inter
-    *   *Code & Technical Labels:* JetBrains Mono
+The application uses custom dark-mode Bento HUD style tokens configured directly in Tailwind:
+*   **Base Canvas:** Midnight Deep Space (`#030712`)
+*   **Surfaces:** Obsidian Graphite Glass (`#090F1C`)
+*   **Outlines:** Slate Blue outlines (`#1E293B`)
+*   **Accents:** Cyber Cyan (`#00F0FF`), Glowing Violet (`#8B5CF6`), Hot Magenta (`#F43F5E`), and Emerald (`#10B981`).
 
 ---
 
