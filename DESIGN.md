@@ -1,53 +1,54 @@
-# Visual Design System Specification: ReguDrift AI
+# Visual Design System Specification: Bento Space HUD (Dark Mode)
 
-This document establishes the **visual system source of truth** for ReguDrift AI's frontend interfaces. All visual styling, component borders, typography pairings, and layout spacing parameters are directly mapped from the high-fidelity **StitchMCP** project workspace design configurations (`projects/6593205147055653661`).
+This document establishes the **visual system source of truth** for ReguDrift AI's frontend interfaces, adopting an immersive, dark-mode **Security Operations Center (SOC) Command Console** styled as a modular Bento Grid.
 
 ---
 
 ## 1. Brand Pillars & Style Direction
-The creative direction centers on **Institutional Precision**, evoking a sense of absolute security, control, and analytical command. 
+The creative direction centers on **Advanced Security Command**, evoking a sense of active monitoring, cryptographic control, and high-fidelity intelligence.
 
-*   **Fortified**: Containers, navigation bars, and data rows feel structurally grounded and protected.
-*   **Clinical & Quantitative**: Information is presented in high density. Accent alert colors are used strictly to highlight compliance drift.
-*   **Architectural Grid**: Minimal visual clutter. Layout is constructed using a high-density, sharp 1px dividing grid, producing a blueprint aesthetic.
+*   **Obsidian Depth:** Surfaces utilize deep space black and semi-transparent dark navy layering with glowing borders to establish a three-dimensional glass panel system.
+*   **Active Monitoring HUD:** Features animated elements (rotating radar scanners, pulsing status rings, and dynamic Git timeline nodes) to represent live data ingestion and trace analysis.
+*   **Bento Modularity:** Content is structured into a high-density, multi-sized grid of widgets, maximizing scanning efficiency.
 
 ---
 
 ## 2. Design Tokens Mapping
 
-### 2.1 Color Palette (Fidelity Hex Mapping)
-*   **Canvas Base Background**: `#0B0F19` (Midnight primary background canvas)
-*   **Surface Dim (Sidebar & Navigation)**: `#131314` (Deep slate surface)
-*   **Surface Container (Dashboard Cards)**: `#201f20` (Dark gray widget surfaces)
-*   **Surface Container Low (Header Toolbar)**: `#1c1b1c` (Header gray)
-*   **Surface Container Lowest (Terminal Canvas)**: `#0e0e0f` (Code dark panel)
-*   **Outline Border (Blueprint Divider)**: `#46464c` / `#334155` (Slate-borders)
-*   **Text colors**:
-    *   *High-Readability Text*: `#e5e2e2` (Pure Off-White)
-    *   *Sub-header Text*: `#c6c6cc` (Silver-Grey)
-*   **Dynamic Alert Colors**:
-    *   *Compliant / Success*: `#10B981` (Emerald Green)
-    *   *Partial / Warning*: `#F59E0B` (Amber Gold)
-    *   *Non-Compliant / Critical*: `#EF4444` (Vermillion Red)
+### 2.1 Color Palette
+*   **Canvas Base Background:** `#030712` (Midnight Deep Space)
+*   **Surfaces (Bento Panels):** `#090F1C` (Obsidian Glass)
+*   **Outline Border (Glow):** `#1E293B` / `#334155` (Slate blueprint outlines)
+*   **Active Accents:**
+    *   *Cyber Blue / Cyan:* `#00F0FF` (Dashboard primary highlight)
+    *   *Glowing Violet:* `#8B5CF6` (Git node states and active scans)
+    *   *Hot Magenta:* `#F43F5E` (Drifts, errors, and warnings)
+    *   *Emerald Green:* `#10B981` (Compliant status nodes)
+*   **Text colors:**
+    *   *High-Readability Text:* `#F8FAFC` (Pure white text)
+    *   *Muted Labels:* `#94A3B8` (Muted slate grey)
 
-### 2.2 Typography Scale
-This design system uses a tri-font strategy to balance corporate authority with high-density data representation:
-*   **Display / Headlines**: **Hanken Grotesk**
-*   **Body Copy**: **Inter**
-*   **Technical Logs & Labels**: **JetBrains Mono**
+---
+
+## 3. Typography Scale
+This design system balances editorial authority with clean technical print:
+*   **Display / Headlines:** **Inter** (Regular, Medium, Bold)
+*   **Technical Logs & Code:** **JetBrains Mono**
 
 | Style | Font Family | Size | Weight | Line Height | Letter Spacing |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **display-lg** | Hanken Grotesk | 32px | Bold (700) | 40px | -0.02em |
-| **headline-md** | Hanken Grotesk | 24px | Semibold (600) | 32px | -0.01em |
-| **title-sm** | Inter | 18px | Semibold (600) | 24px | Default |
-| **body-md** | Inter | 14px | Regular (400) | 20px | Default |
-| **body-sm** | Inter | 13px | Regular (400) | 18px | Default |
-| **code-terminal** | JetBrains Mono | 13px | Regular (400) | 20px | Default |
-| **label-caps** | JetBrains Mono | 11px | Semibold (600) | 16px | 0.05em (Caps) |
+| **display-lg** | Inter | 28px | Bold (700) | 36px | -0.01em |
+| **headline-md** | Inter | 20px | Semibold (600) | 28px | Default |
+| **title-sm** | Inter | 15px | Semibold (600) | 22px | Default |
+| **body-md** | Inter | 13px | Regular (400) | 18px | Default |
+| **code-terminal** | JetBrains Mono | 12px | Regular (400) | 18px | Default |
 
-### 2.3 Shapes & Elevation
-*   **Corner Radii**: Strictly sharp and geometric to retain the architectural feel:
-    *   *Cards & Widgets*: `2px` (`0.125rem` / `rounded-sm`)
-    *   *Buttons & Inputs*: `4px` (`0.25rem` / `rounded`)
-*   **Depth Representation**: Traditional blurred dropshadows are completely prohibited. Depth is communicated strictly through **Tonal Layering** (e.g. Surface Container sitting on Base Canvas) and **Thin Opaque Borders** (`1px solid #46464c`).
+---
+
+## 4. Shapes & Elevation
+*   **Corner Radii:** Soft, modular corners:
+    *   *Bento Cards:* `12px` (`rounded-xl`)
+    *   *Pills & Buttons:* `24px` (`rounded-full`)
+*   **Depth Representation:** Communicated through border glow and semi-transparent panels:
+    *   *Glassmorphism:* `background: rgba(9, 15, 28, 0.7); backdrop-filter: blur(12px)`
+    *   *Border Glow:* `1px solid rgba(30, 41, 59, 0.8)`

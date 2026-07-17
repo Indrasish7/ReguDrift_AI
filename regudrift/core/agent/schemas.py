@@ -23,7 +23,6 @@ class StateEnum(str, Enum):
     FINAL_REPORT = "FinalReport"
 
 
-# State 1 Schema: Planning and Goal Decomposition
 class PlanCreation(BaseModel):
     """
     Objectives and search query strategies formulated based on the regulatory update.
@@ -42,7 +41,6 @@ class PlanCreation(BaseModel):
     )
 
 
-# State 2 Schema: Context Ingestion and Evidence Consolidation
 class ContextRetrieval(BaseModel):
     """
     Synthesized overview of internal policies retrieved to match regulatory requirements.
@@ -58,7 +56,6 @@ class ContextRetrieval(BaseModel):
     )
 
 
-# State 3 Schema: Comparative Auditing and Gap Mapping
 class ComplianceGapMapping(BaseModel):
     """
     Granular comparison showing where an internal policy aligns or drifts from a regulatory clause.
@@ -80,10 +77,10 @@ class GapAnalysis(BaseModel):
     compliance_gaps: List[ComplianceGapMapping] = Field(..., description="Detailed mappings for all evaluated sections.")
 
 
-# State 4 Schema: Actionable Remediation Blueprint
 class DriftRemediationBlueprint(BaseModel):
     """
     Technical and operational guide to remediate compliance drift for a specific clause.
+    Includes Git blamer metadata tracking fields.
     """
     clause_at_risk: str = Field(
         ...,
@@ -103,6 +100,11 @@ class DriftRemediationBlueprint(BaseModel):
         ...,
         description="Explicit step-by-step engineering, data flow, or process modifications required."
     )
+
+    commit_hash: Optional[str] = Field(None, description="Git commit hash associated with this drift.")
+    author_name: Optional[str] = Field(None, description="Git commit author name.")
+    commit_timestamp: Optional[str] = Field(None, description="Git commit ISO/unix timestamp.")
+    branch_name: Optional[str] = Field(None, description="Git branch name.")
 
 
 class FinalReport(BaseModel):
@@ -124,7 +126,6 @@ class FinalReport(BaseModel):
     )
 
 
-# Unified Carrier State Payload
 class AgentStatePayload(BaseModel):
     """
     State payload tracing the progress of ReguDrift AI's compliance orchestrator loop.

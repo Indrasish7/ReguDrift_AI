@@ -10,62 +10,67 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0B0F19",
-        surface: "#131314",
-        "surface-dim": "#131314",
-        "surface-bright": "#3a393a",
-        "surface-container-lowest": "#0e0e0f",
-        "surface-container-low": "#1c1b1c",
-        "surface-container": "#201f20",
-        "surface-container-high": "#2a2a2b",
-        "surface-container-highest": "#353435",
-        "on-surface": "#e5e2e2",
-        "on-surface-variant": "#c6c6cc",
-        "inverse-surface": "#e5e2e2",
-        "inverse-on-surface": "#313031",
-        outline: "#909096",
-        "outline-variant": "#46464c",
-        primary: "#c3c6d4",
-        "on-primary": "#2c303b",
-        "primary-container": "#0b0f19",
-        "on-primary-container": "#787b88",
-        "inverse-primary": "#5a5e6a",
-        secondary: "#bcc7de",
-        "on-secondary": "#263143",
-        "secondary-container": "#3e495d",
-        "on-secondary-container": "#aeb9d0",
-        tertiary: "#dbc2b1",
-        "on-tertiary": "#3d2d22",
-        "tertiary-container": "#180c04",
-        "on-tertiary-container": "#8d7869",
-        error: "#ffb4ab",
-        "on-error": "#690005",
-        "error-container": "#93000a",
-        "on-error-container": "#ffdad6",
+        background: "#030712", // Midnight Deep Space
+        surface: "#090F1C",    // Obsidian graphite glass
+        "surface-dim": "#050811",
+        "surface-bright": "#121B2E",
+        "surface-container-lowest": "#030712",
+        "surface-container-low": "#060913",
+        "surface-container": "#090F1C",
+        "surface-container-high": "#1E293B", // Glowing slate grey border/fill
+        "surface-container-highest": "#2D3D5A",
+        "on-surface": "#F8FAFC",            // Pure off-white
+        "on-surface-variant": "#94A3B8",    // Muted slate grey
+        "inverse-surface": "#F8FAFC",
+        "inverse-on-surface": "#030712",
+        outline: "#334155",
+        "outline-variant": "#1E293B",       // Slate border lines
+        primary: "#00F0FF",                 // Cyber Cyan
+        "on-primary": "#030712",
+        "primary-container": "#030712",
+        "on-primary-container": "#00F0FF",
+        "inverse-primary": "#00C3D9",
+        secondary: "#8B5CF6",               // Cyber Purple / Glowing Violet
+        "on-secondary": "#FFFFFF",
+        "secondary-container": "#2E1065",
+        "on-secondary-container": "#DDD6FE",
+        success: "#10B981",                 // Emerald Green
+        "on-success": "#FFFFFF",
+        warning: "#FBBC05",
+        "on-warning": "#202124",
+        error: "#F43F5E",                   // Hot Magenta / Pink for drifts
+        "on-error": "#FFFFFF",
       },
       borderRadius: {
-        DEFAULT: "0.125rem", // 2px
-        lg: "0.25rem", // 4px
-        xl: "0.5rem", // 8px
-        full: "0.75rem", // 12px
+        DEFAULT: "0.75rem",  // 12px modular Bento corners
+        lg: "0.75rem",
+        xl: "1rem",          // 16px soft corners
+        "2xl": "1.5rem",     // 24px rounded widgets
+        full: "9999px",
       },
       spacing: {
-        "density-high": "4px",
-        unit: "4px",
-        "component-gap": "8px",
+        "density-high": "6px",
+        unit: "8px",
+        "component-gap": "12px",
         "container-padding": "24px",
-        "density-medium": "12px",
-        gutter: "16px",
+        "density-medium": "16px",
+        gutter: "24px",
       },
       fontFamily: {
-        "display-lg": ["var(--font-hanken-grotesk)", "sans-serif"],
-        "headline-md": ["var(--font-hanken-grotesk)", "sans-serif"],
+        "display-lg": ["var(--font-inter)", "sans-serif"],
+        "headline-md": ["var(--font-inter)", "sans-serif"],
         "title-sm": ["var(--font-inter)", "sans-serif"],
         "body-md": ["var(--font-inter)", "sans-serif"],
         "body-sm": ["var(--font-inter)", "sans-serif"],
         "code-terminal": ["var(--font-jetbrains-mono)", "monospace"],
-        "label-caps": ["var(--font-jetbrains-mono)", "monospace"],
+        "label-caps": ["var(--font-inter)", "sans-serif"],
       },
+      boxShadow: {
+        sm: "0 0 10px rgba(0,240,255,0.05)",
+        md: "0 0 20px rgba(139,92,246,0.1)",
+        lg: "0 0 30px rgba(0,240,255,0.15)",
+        inset: "inset 0 0 12px rgba(30,41,59,0.3)"
+      }
     },
   },
   plugins: [],

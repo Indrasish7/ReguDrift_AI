@@ -1,15 +1,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { api, TelemetryPayload } from "@/lib/api";
+import { api, TelemetryPayload, AnalyticsHistoryPoint } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MetricCards from "@/components/MetricCards";
 import Remediation from "@/components/Remediation";
 
+interface MockCommit {
+  hash: string;
+  author: string;
+  branch: string;
+  timestamp: string;
+  status: "Compliant" | "Partial" | "Non-Compliant";
+  health: number;
+}
+
 export default function CisoDashboard() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [role, setRole] = useState<string>("SecOps_Admin");
 
-  // Ingestion State
   const [docId, setDocId] = useState<string>("policy_telemetry_v3");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isIngesting, setIsIngesting] = useState<boolean>(false);
@@ -20,23 +29,50 @@ export default function CisoDashboard() {
     chunksCount: number;
   } | null>(null);
 
-  // Auditing State
   const [bulletinText, setBulletinText] = useState<string>(
     `SEBI CYBERSECURITY DIRECTIVE: REFORMATTED AUDIT AND TRACE LOG MANAGEMENT 2026\nCHAPTER III: REPOSITORY INTEGRITY AND CRYPTOGRAPHIC SAFEGUARDS\nSection 4.2: Cryptographical Log Protection\nTo prevent insider tampering, all core transaction and system access log aggregates must be cryptographically protected from unauthorized alterations.\n(a) Centralized log streams must be signed at the application level using HMAC-SHA256 signatures before being written to disk.\n(b) Storage buckets containing log aggregates must utilize dedicated Customer-Managed Keys (CMK) via Key Management Services (KMS) with automated annual rotation enabled. Default provider-managed keys are no longer sufficient for compliance.`
   );
+  
+  const mockCommits: MockCommit[] = [
+    { hash: "a1b2c3d4e5f67890", author: "Dev DevOps", branch: "release/v1.1", timestamp: "2026-07-17T12:00:00Z", status: "Non-Compliant", health: 45 },
+    { hash: "f8b9c0d1e2f3a4b5", author: "Alice Auditor", branch: "main", timestamp: "2026-07-16T15:30:00Z", status: "Compliant", health: 100 },
+    { hash: "e4f5a6b7c8d9e0f1", author: "Bob Builder", branch: "feature/logging", timestamp: "2026-07-15T09:15:00Z", status: "Partial", health: 75 },
+    { hash: "cd78ef90ab12cd34", author: "Charlie Coder", branch: "patch/rotation", timestamp: "2026-07-14T17:45:00Z", status: "Non-Compliant", health: 60 }
+  ];
+
+  const [selectedCommit, setSelectedCommit] = useState<MockCommit>(mockCommits[0]);
+  const [gitHash, setGitHash] = useState<string>(mockCommits[0].hash);
+  const [gitAuthor, setGitAuthor] = useState<string>(mockCommits[0].author);
+  const [gitBranch, setGitBranch] = useState<string>(mockCommits[0].branch);
+  
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [auditProgress, setAuditProgress] = useState<number>(0);
   const [auditStatus, setAuditStatus] = useState<string>("");
   
-  // Dashboard Telemetry Cache State
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   const [recordId, setRecordId] = useState<number>(-1);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [historyData, setHistoryData] = useState<AnalyticsHistoryPoint[]>([]);
 
-  // Poll health and sync mock values or read initial db state if available
+  const handleSelectCommit = (commit: MockCommit) => {
+    setSelectedCommit(commit);
+    setGitHash(commit.hash);
+    setGitAuthor(commit.author);
+    setGitBranch(commit.branch);
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const response = await api.getComplianceHistory(role);
+      setHistoryData(response.data);
+    } catch (err) {
+      console.error("Failed to fetch compliance history trend", err);
+    }
+  };
+
   useEffect(() => {
-    // Optionally fetch initial status on load
-  }, []);
+    fetchHistory();
+  }, [role]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -54,13 +90,13 @@ export default function CisoDashboard() {
     setIngestLogs(["Initializing file stream reader...", "Segmenting document into logical clauses..."]);
 
     try {
-      const response = await api.ingestPolicy(docId, selectedFile);
+      const response = await api.ingestPolicy(docId, selectedFile, role);
       setIngestLogs((prev) => [
         ...prev,
         "Computing deterministic SHA-256 chunk hashes...",
-        `Generating semantic embeddings for ${response.chunks_count} clauses...`,
-        "Indexing embedded dimensions into Qdrant collection...",
-        `Successfully logged Document Record ID #${response.relational_record_id}!`,
+        `Generating embeddings for ${response.chunks_count} clauses...`,
+        "Indexing embedded dimensions into Qdrant...",
+        `Relational DB Record saved ID #${response.relational_record_id}!`,
       ]);
       setLastIngested({
         docId: response.document_id,
@@ -68,7 +104,9 @@ export default function CisoDashboard() {
         chunksCount: response.chunks_count,
       });
     } catch (err: any) {
-      setIngestLogs((prev) => [...prev, `Ingestion error: ${err.message || err}`]);
+      const errorMsg = err.response?.data?.detail || err.message || err;
+      setIngestLogs((prev) => [...prev, `RBAC/Ingestion error: ${errorMsg}`]);
+      alert(`Ingestion failed: ${errorMsg}`);
     } finally {
       setIsIngesting(false);
     }
@@ -84,7 +122,6 @@ export default function CisoDashboard() {
     setAuditProgress(10);
     setAuditStatus("Formulating Planning Objectives...");
 
-    // Simulated progress transitions to engage CISO visual feedback loop
     const progressIntervals = [
       { p: 35, s: "Executing semantic vector queries..." },
       { p: 65, s: "Conducting comparative gap analysis..." },
@@ -99,23 +136,44 @@ export default function CisoDashboard() {
     });
 
     try {
-      const response = await api.analyzeCompliance(bulletinText);
+      const response = await api.analyzeCompliance(bulletinText, role, {
+        commit_hash: gitHash,
+        author_name: gitAuthor,
+        commit_timestamp: new Date().toISOString(),
+        branch_name: gitBranch
+      });
+      
       setTimeout(() => {
         setAuditProgress(100);
         setAuditStatus("Analysis complete!");
         setTelemetry(response.telemetry);
         setRecordId(response.relational_record_id);
         setIsAuditing(false);
-        setActiveTab("dashboard"); // bounce back to dashboard to review visual grids
+        fetchHistory();
+        setActiveTab("dashboard");
       }, 3000);
     } catch (err: any) {
       setIsAuditing(false);
       setAuditStatus("Analysis failed.");
-      alert(`Audit failed: ${err.response?.data?.detail || err.message}`);
+      const errorMsg = err.response?.data?.detail || err.message;
+      alert(`Audit failed: ${errorMsg}`);
     }
   };
 
-  // Generate Institutional PDF Boardroom Report by opening a beautifully styled printable overlay window
+  const handleClearDrifts = async () => {
+    if (confirm("Are you sure you want to clear all compliance drifts and historical runs?")) {
+      try {
+        await api.clearComplianceDrifts(role);
+        setTelemetry(null);
+        setRecordId(-1);
+        fetchHistory();
+        alert("All active compliance drifts and historical logs cleared successfully.");
+      } catch (err: any) {
+        alert(`Clear failed: ${err.response?.data?.detail || err.message}`);
+      }
+    }
+  };
+
   const handleExportPdf = () => {
     if (!telemetry || !telemetry.report) {
       alert("No active compliance telemetry report to export. Please run the live audit analysis first.");
@@ -125,7 +183,6 @@ export default function CisoDashboard() {
     setIsExporting(true);
     const report = telemetry.report;
 
-    // Build highly polished HTML Document for printing
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Pop-up blocker prevented opening report. Please allow popups for this site.");
@@ -135,19 +192,25 @@ export default function CisoDashboard() {
 
     const dateStr = new Date().toLocaleString();
     const mappingsHtml = report.compliance_drift_matrix
-      .map(
-        (m, idx) => `
-        <div class="card" style="border-left: 5px solid ${
-          m.status === "Non-Compliant" ? "#EF4444" : m.status === "Partial" ? "#F59E0B" : "#10B981"
-        };">
-          <div class="card-header">Reference Mapping #${idx + 1}</div>
-          <div class="field"><span class="label">Regulatory Clause:</span> ${m.regulatory_clause}</div>
-          <div class="field"><span class="label">Internal Policy Ref:</span> ${m.internal_policy_reference}</div>
-          <div class="field"><span class="label">Alignment Status:</span> <span class="badge ${m.status.toLowerCase()}">${m.status.toUpperCase()}</span></div>
-          <div class="field"><span class="label">Delta Evidence:</span> <span class="evidence">${m.delta_evidence}</span></div>
-        </div>
-      `
-      )
+      .map((m, idx) => {
+        const bp = report.drift_remediation_blueprints.find(b => b.clause_at_risk === m.regulatory_clause || m.regulatory_clause.includes(b.clause_at_risk));
+        return `
+          <div class="card" style="border-left: 5px solid ${
+            m.status === "Non-Compliant" ? "#F43F5E" : m.status === "Partial" ? "#FBBC05" : "#10B981"
+          };">
+            <div class="card-header">Reference Mapping #${idx + 1}</div>
+            <div class="field"><span class="label">Regulatory Clause:</span> ${m.regulatory_clause}</div>
+            <div class="field"><span class="label">Internal Policy Ref:</span> ${m.internal_policy_reference}</div>
+            <div class="field"><span class="label">Alignment Status:</span> <span class="badge ${m.status.toLowerCase()}">${m.status.toUpperCase()}</span></div>
+            <div class="field"><span class="label">Delta Evidence:</span> <span class="evidence">${m.delta_evidence}</span></div>
+            ${bp?.commit_hash ? `
+              <div class="field font-mono" style="font-size: 11px; margin-top: 6px; color: #94a3b8;">
+                <strong>Git Commit:</strong> ${bp.commit_hash.substring(0, 8)} | <strong>Author:</strong> ${bp.author_name || "N/A"} | <strong>Branch:</strong> ${bp.branch_name || "N/A"}
+              </div>
+            ` : ""}
+          </div>
+        `;
+      })
       .join("");
 
     const blueprintsHtml = report.drift_remediation_blueprints
@@ -159,6 +222,11 @@ export default function CisoDashboard() {
             <span class="label">Severity Level:</span> <span class="badge ${b.severity_rating.toLowerCase()}">${b.severity_rating}</span>
             <span class="label" style="margin-left: 20px;">Clarity Score:</span> <code>${b.clarity_score}/100</code>
           </div>
+          ${b.commit_hash ? `
+            <div style="margin-bottom: 8px; font-size: 11px; color: #94a3b8;">
+              <strong>Commit:</strong> ${b.commit_hash} | <strong>Author:</strong> ${b.author_name} | <strong>Branch:</strong> ${b.branch_name}
+            </div>
+          ` : ""}
           <pre>${b.technical_remediation_blueprint}</pre>
         </div>
       `
@@ -172,15 +240,15 @@ export default function CisoDashboard() {
         <title>ReguDrift AI - Boardroom Compliance Audit</title>
         <style>
           body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: #ffffff;
-            color: #1e293b;
+            font-family: Arial, sans-serif;
+            background-color: #030712;
+            color: #f8fafc;
             margin: 40px;
             font-size: 14px;
             line-height: 1.6;
           }
           header {
-            border-bottom: 2px solid #1e3a8a;
+            border-bottom: 2px solid #00f0ff;
             padding-bottom: 12px;
             margin-bottom: 30px;
           }
@@ -192,17 +260,17 @@ export default function CisoDashboard() {
           .logo {
             font-size: 24px;
             font-weight: bold;
-            color: #1e3a8a;
+            color: #00f0ff;
           }
           .date {
             font-size: 11px;
-            color: #64748b;
+            color: #94a3b8;
           }
           .cover-meta {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background-color: #090f1c;
+            border: 1px solid #1e293b;
             padding: 20px;
-            border-radius: 4px;
+            border-radius: 12px;
             margin-bottom: 30px;
           }
           .cover-meta table {
@@ -215,33 +283,33 @@ export default function CisoDashboard() {
           }
           .cover-meta td.label {
             font-weight: bold;
-            color: #475569;
+            color: #94a3b8;
             width: 180px;
           }
           h2 {
             font-size: 18px;
-            color: #1e3a8a;
-            border-bottom: 1px solid #cbd5e1;
+            color: #00f0ff;
+            border-bottom: 1px solid #1e293b;
             padding-bottom: 6px;
             margin-top: 30px;
           }
           .summary-box {
-            background-color: #f8fafc;
-            border-left: 4px solid #1e3a8a;
+            background-color: #090f1c;
+            border-left: 4px solid #8b5cf6;
             padding: 15px;
             font-style: italic;
             margin-bottom: 25px;
           }
           .card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
+            background: #090f1c;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
             padding: 16px;
             margin-bottom: 16px;
           }
           .card-header {
             font-weight: bold;
-            color: #1e3a8a;
+            color: #00f0ff;
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -252,48 +320,48 @@ export default function CisoDashboard() {
           }
           .field span.label {
             font-weight: bold;
-            color: #475569;
+            color: #94a3b8;
             display: inline-block;
             width: 140px;
           }
           .badge {
             font-weight: bold;
             padding: 2px 6px;
-            border-radius: 3px;
+            border-radius: 12px;
             font-size: 11px;
           }
           .badge.non-compliant, .badge.critical, .badge.high {
-            background-color: #fee2e2;
-            color: #dc2626;
+            background-color: #4c0519;
+            color: #fda4af;
           }
           .badge.partial, .badge.medium {
-            background-color: #fef3c7;
-            color: #d97706;
+            background-color: #451a03;
+            color: #fde047;
           }
           .badge.compliant, .badge.low {
-            background-color: #dcfce7;
-            color: #16a34a;
+            background-color: #064e3b;
+            color: #6ee7b7;
           }
           .evidence {
-            color: #475569;
+            color: #cbd5e1;
           }
           .blueprint-section {
             margin-bottom: 25px;
             page-break-inside: avoid;
           }
           pre {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #f1f5f9;
+            font-family: monospace;
+            background-color: #030712;
             padding: 15px;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 12px;
             overflow-x: auto;
             white-space: pre-wrap;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #1e293b;
           }
           footer {
             margin-top: 50px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #1e293b;
             padding-top: 10px;
             font-size: 11px;
             color: #94a3b8;
@@ -365,9 +433,8 @@ export default function CisoDashboard() {
     setIsExporting(false);
   };
 
-  // Determine overall status based on telemetry findings
   const getOverallStatus = () => {
-    if (!telemetry || !telemetry.report) return "Drift Detected";
+    if (!telemetry || !telemetry.report) return selectedCommit.status;
     const statuses = telemetry.report.compliance_drift_matrix.map((m) => m.status);
     if (statuses.includes("Non-Compliant")) return "Non-Compliant";
     if (statuses.includes("Partial")) return "Partial";
@@ -375,251 +442,314 @@ export default function CisoDashboard() {
   };
 
   const getOverallHealth = () => {
-    if (!telemetry || !telemetry.report) return 75;
+    if (!telemetry || !telemetry.report) return selectedCommit.health;
     const statuses = telemetry.report.compliance_drift_matrix.map((m) => m.status);
     if (statuses.includes("Non-Compliant")) return 45;
     if (statuses.includes("Partial")) return 75;
     return 100;
   };
 
-  return (
-    <>
-      {/* Dynamic Navigation Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+  const renderSonarScanner = () => {
+    const health = getOverallHealth();
+    const statusCol = health >= 90 ? "stroke-[#10B981]" : health >= 70 ? "stroke-[#FBBC05]" : "stroke-[#F43F5E]";
+    return (
+      <div className="flex flex-col items-center justify-center p-4 h-full relative">
+        <div className="relative w-36 h-36 flex items-center justify-center bg-background rounded-full border border-outline-variant shadow-[0_0_20px_rgba(0,240,255,0.05)]">
+          <div className="absolute inset-3 border border-outline-variant/30 rounded-full"></div>
+          <div className="absolute inset-8 border border-outline-variant/20 rounded-full"></div>
+          <div className="absolute inset-14 border border-outline-variant/10 rounded-full"></div>
+          <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-outline-variant/25"></div>
+          <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-outline-variant/25"></div>
 
-      {/* Main Dashboard Canvas Wrapper */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        
-        {/* Top App Bar Header */}
-        <header className="flex justify-between items-center w-full px-gutter h-16 max-w-full docked top-0 border-b border-outline-variant bg-surface-container-low z-40 flex-shrink-0">
-          <div className="flex items-center gap-component-gap md:hidden">
-            <div className="w-8 h-8 rounded bg-primary-container border border-primary flex items-center justify-center">
-              <span className="text-primary text-sm font-bold">🛡️</span>
-            </div>
-            <span className="font-headline-md font-bold tracking-tight text-on-surface text-lg">
-              ReguDrift AI
-            </span>
+          {}
+          <div className={`absolute inset-0 animate-radar-sweep ${isAuditing ? "" : "opacity-30"}`}>
+            <svg className="w-full h-full" viewBox="0 0 100 100">
+              <line x1="50" y1="50" x2="50" y2="0" stroke="#00F0FF" strokeWidth="1.5" />
+              <path d="M50 50 L50 0 A50 50 0 0 1 85 15 Z" fill="url(#radarGradient)" />
+              <defs>
+                <linearGradient id="radarGradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#00F0FF" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
 
-          {/* Quick Queries Input */}
-          <div className="hidden md:flex flex-1 max-w-md mx-container-padding relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">🔍</span>
-            <input
-              className="w-full bg-surface-container border border-outline-variant rounded py-1.5 pl-10 pr-4 font-body-sm text-xs text-on-surface focus:outline-none focus:border-on-surface transition-colors placeholder:text-on-surface-variant/40"
-              placeholder="Query audit logs, policies, instances..."
-              type="text"
-            />
+          {}
+          <div className="absolute flex flex-col items-center justify-center z-10 bg-surface/90 border border-outline-variant w-16 h-16 rounded-full shadow-md">
+            <span className="text-xl font-bold font-mono text-on-surface">{health}%</span>
+            <span className="text-[7px] text-on-surface-variant uppercase font-mono tracking-widest mt-0.5">HEALTH</span>
           </div>
+        </div>
+      </div>
+    );
+  };
 
-          <div className="flex items-center gap-gutter ml-auto">
-            <div className="flex gap-2">
-              <button className="p-1.5 rounded text-on-surface-variant hover:text-primary transition-all focus:outline-none text-sm">
-                🔔
-              </button>
-              <button className="p-1.5 rounded text-on-surface-variant hover:text-primary transition-all focus:outline-none text-sm">
-                🛡️
-              </button>
-            </div>
-            <div className="w-8 h-8 rounded border border-outline-variant bg-surface-container-high overflow-hidden cursor-pointer hover:border-primary transition-colors flex items-center justify-center">
-              <span className="text-on-surface-variant text-sm">👤</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Scrollable Main Content Container */}
-        <main className="flex-1 overflow-y-auto p-container-padding lg:p-8 flex flex-col gap-container-padding bg-background">
+  const renderGitGraph = () => {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
+          <span className="text-[9px] font-mono font-bold text-secondary uppercase tracking-widest">Commit Graph</span>
+          <span className="text-[9px] font-mono text-on-surface-variant">Click to blame</span>
+        </div>
+        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 relative">
           
-          {/* TAB 1: AUDITING DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <>
-              {/* Dynamic Health & Vulnerability Cards */}
-              <MetricCards
-                healthScore={getOverallHealth()}
-                activeGuidelines={142}
-                criticalGaps={telemetry?.report?.drift_remediation_blueprints?.length || 12}
-                statusText={getOverallStatus()}
-                hasAudited={!!telemetry}
-              />
+          {}
+          <div className="absolute left-[13px] top-4 bottom-4 w-[2px] bg-outline-variant/60"></div>
+          
+          {mockCommits.map((commit, idx) => {
+            const isSelected = selectedCommit.hash === commit.hash;
+            const nodeColor = commit.status === "Compliant" ? "bg-success shadow-[0_0_8px_#10B981]" : commit.status === "Partial" ? "bg-warning shadow-[0_0_8px_#FBBC05]" : "bg-error shadow-[0_0_8px_#F43F5E]";
+            return (
+              <div
+                key={idx}
+                onClick={() => handleSelectCommit(commit)}
+                className={`pl-8 pr-3 py-2 rounded-lg cursor-pointer transition-all duration-200 border text-left relative flex flex-col ${
+                  isSelected
+                    ? "bg-[#121B2E]/60 border-primary shadow-[0_0_10px_rgba(0,240,255,0.05)]"
+                    : "bg-background border-outline-variant/60 hover:bg-surface-bright hover:border-outline-variant"
+                }`}
+              >
+                {}
+                <div className={`absolute left-[9px] top-[15px] w-2.5 h-2.5 rounded-full z-10 ${nodeColor} ${isSelected ? "scale-125 animate-ping" : ""}`}></div>
+                <div className={`absolute left-[9px] top-[15px] w-2.5 h-2.5 rounded-full z-20 ${nodeColor} ${isSelected ? "scale-125" : ""}`}></div>
 
-              {/* SPLIT-SCREEN DRIFT INSPECTOR */}
-              <section className="flex flex-col gap-component-gap mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="font-title-sm text-base font-semibold text-on-surface flex items-center gap-2">
-                    <span>🔁</span>
-                    Drift Inspector
-                  </h2>
-                  <span className="font-label-caps text-[10px] text-on-surface-variant py-1 px-2 border border-outline-variant rounded bg-surface-container-highest uppercase tracking-wider">
-                    {telemetry ? "Active Comparative Audit Tracked" : "Live Verification Baseline"}
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-mono text-[10px] font-bold text-on-surface">
+                    {commit.hash.substring(0, 8)}
+                  </span>
+                  <span className="text-[8px] font-mono text-on-surface-variant font-medium">
+                    {commit.branch}
                   </span>
                 </div>
+                <div className="flex justify-between text-[9px] text-on-surface-variant">
+                  <span>{commit.author}</span>
+                  <span className={`font-bold ${commit.status === "Compliant" ? "text-success" : commit.status === "Partial" ? "text-warning" : "text-error"}`}>
+                    {commit.status.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[1px] bg-outline-variant border border-outline-variant rounded overflow-hidden">
-                  
-                  {/* Left Pane: Regulatory Mandates */}
-                  <div className="bg-surface-container flex flex-col h-[400px]">
-                    <div className="px-density-medium py-2 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
-                      <span className="font-label-caps text-[10px] text-on-surface uppercase tracking-wider">
-                        Regulatory Directive Bulletin
-                      </span>
-                      <span className="text-on-surface-variant text-sm">📋</span>
-                    </div>
-                    <div className="flex-1 p-container-padding overflow-y-auto font-body-sm text-xs text-on-surface-variant leading-relaxed">
-                      {telemetry && telemetry.report ? (
-                        <div>
-                          <h4 className="font-bold text-on-surface text-sm mb-3">
-                            Evaluated Target Clauses
-                          </h4>
-                          {telemetry.analysis?.target_clauses_evaluated.map((clause, idx) => (
+  return (
+    <div className="flex bg-background text-on-surface h-screen w-screen overflow-hidden font-sans">
+      
+      {}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} role={role} setRole={setRole} />
+
+        {}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background pb-16">
+          
+          {}
+          {activeTab === "dashboard" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              
+              {}
+              <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex flex-col shadow-md lg:col-span-1">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[9px] font-mono font-bold tracking-widest text-primary uppercase">Audit Radar Scanner</span>
+                  <span className="text-xs">🔄</span>
+                </div>
+                <div className="flex-grow flex items-center justify-center min-h-[170px]">
+                  {renderSonarScanner()}
+                </div>
+              </div>
+
+              {}
+              <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex flex-col shadow-md lg:col-span-1 h-[250px]">
+                {renderGitGraph()}
+              </div>
+
+              {}
+              <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex flex-col shadow-md lg:col-span-1 h-[250px]">
+                <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-2">
+                  <span className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest">Global Health Trend</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant">Time-Series</span>
+                </div>
+                <div className="flex-grow flex flex-col justify-center">
+                  <MetricCards
+                    healthScore={getOverallHealth()}
+                    activeGuidelines={142}
+                    criticalGaps={telemetry?.report?.drift_remediation_blueprints?.length || 12}
+                    statusText={getOverallStatus()}
+                    hasAudited={!!telemetry}
+                    historyData={historyData}
+                  />
+                </div>
+              </div>
+
+              {}
+              <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex flex-col shadow-md md:col-span-2 lg:col-span-3">
+                <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
+                  <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">Live Compliance Drift Inspector</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant">Comparative Diff Panel</span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {}
+                  <div className="bg-[#030712]/50 border border-outline-variant/60 rounded-xl p-4 h-[300px] overflow-y-auto">
+                    <div className="text-[9px] font-mono text-secondary mb-2 uppercase tracking-widest">Regulatory Directive Bulletin</div>
+                    {telemetry && telemetry.report ? (
+                      <div className="flex flex-col gap-2">
+                        {telemetry.analysis?.target_clauses_evaluated.map((clause, idx) => (
+                          <div key={idx} className="p-3 bg-surface border border-outline-variant/50 rounded-lg">
+                            <span className="text-primary font-bold font-mono text-[10px]">Clause {idx + 1}:</span>
+                            <p className="mt-1 text-on-surface/90 text-xs">{clause}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-on-surface-variant/80">
+                        <p className="mb-3">4.1.2 Enforce hardware-backed multi-factor authentication (MFA) keys for admin operations.</p>
+                        <div className="p-3 bg-error/5 border border-error/20 rounded-lg text-on-surface relative">
+                          <p className="font-bold text-xs text-error font-mono mb-1 uppercase tracking-wider">⚠️ Clause 4.1.3: Data Encryption at Rest</p>
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            "Sensitive financial telemetry and transaction logs must be encrypted at rest using AES-256 or equivalent cryptographic standards managed by a Key Management Service (KMS)."
+                          </p>
+                        </div>
+                        <p className="mt-3">4.1.4 Strictly segment the network to isolate the core transaction processing environment.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {}
+                  <div className="bg-[#030712]/50 border border-outline-variant/60 rounded-xl p-4 h-[300px] overflow-y-auto">
+                    <div className="text-[9px] font-mono text-secondary mb-2 uppercase tracking-widest">Internal Telemetry & Gaps</div>
+                    {telemetry && telemetry.report ? (
+                      <div className="flex flex-col gap-2">
+                        {telemetry.report.compliance_drift_matrix.map((mapping, idx) => {
+                          const isCritical = mapping.status === "Non-Compliant";
+                          const isWarning = mapping.status === "Partial";
+                          
+                          const bp = telemetry.report?.drift_remediation_blueprints?.find(
+                            (b) => b.clause_at_risk === mapping.regulatory_clause || mapping.regulatory_clause.includes(b.clause_at_risk)
+                          );
+                          const cHash = bp?.commit_hash || gitHash;
+                          const cAuthor = bp?.author_name || gitAuthor;
+                          const cBranch = bp?.branch_name || gitBranch;
+
+                          return (
                             <div
                               key={idx}
-                              className="p-3 bg-slate-900 border border-outline-variant rounded mb-3"
+                              className={`p-3 rounded-lg border-l-4 ${
+                                isCritical
+                                  ? "bg-error/5 border-error"
+                                  : isWarning
+                                  ? "bg-warning/5 border-warning"
+                                  : "bg-success/5 border-success"
+                              }`}
                             >
-                              <span className="text-primary font-semibold text-xs">Clause {idx + 1}:</span>
-                              <p className="mt-1 text-on-surface/90 text-xs">{clause}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="mb-4">
-                            4.1.2 All institutional trading gateways must enforce multi-factor authentication (MFA) utilizing hardware-backed tokens for administrators.
-                          </p>
-                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-on-surface my-4 relative">
-                            <p className="font-semibold mb-1 text-amber-500">
-                              ⚠️ Clause 4.1.3: Data Encryption at Rest
-                            </p>
-                            <p className="text-on-surface-variant text-[12px]">
-                              "Sensitive financial telemetry and transaction logs must be encrypted at rest using AES-256 or equivalent cryptographic standards managed by a Key Management Service (KMS)."
-                            </p>
-                          </div>
-                          <p className="mb-4">
-                            4.1.4 Network segmentation must strictly isolate the transaction processing environment from general networks.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-bold text-on-surface text-xs font-mono">Ref: {mapping.internal_policy_reference}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-mono font-bold ${
+                                  isCritical ? "bg-error/15 text-error" : isWarning ? "bg-warning/15 text-warning" : "bg-success/15 text-success"
+                                }`}>
+                                  {mapping.status.toUpperCase()}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-on-surface-variant font-mono mt-1">{mapping.delta_evidence}</p>
 
-                  {/* Right Pane: Internal Telemetry & Gaps */}
-                  <div className="bg-surface-container-lowest flex flex-col h-[400px]">
-                    <div className="px-density-medium py-2 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
-                      <span className="font-label-caps text-[10px] text-on-surface flex items-center gap-1 uppercase tracking-wider">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-1"></span>
-                        Internal Infrastructure Telemetry
-                      </span>
-                      <span className="text-on-surface-variant text-sm">⚙️</span>
-                    </div>
-                    <div className="flex-1 p-density-medium overflow-y-auto font-code-terminal text-xs text-on-surface-variant leading-relaxed">
-                      {telemetry && telemetry.report ? (
-                        <div>
-                          <div className="text-on-surface-variant/40 mb-2 font-mono">
-                            # Active Compliance Drift Mapping Matrix
-                          </div>
-                          {telemetry.report.compliance_drift_matrix.map((mapping, idx) => {
-                            const isCritical = mapping.status === "Non-Compliant";
-                            const isWarning = mapping.status === "Partial";
-                            return (
-                              <div
-                                key={idx}
-                                className={`p-3 rounded mb-3 border-l-4 font-sans ${
-                                  isCritical
-                                    ? "bg-red-500/5 border-red-500"
-                                    : isWarning
-                                    ? "bg-amber-500/5 border-amber-500"
-                                    : "bg-emerald-500/5 border-emerald-500"
-                                }`}
-                              >
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-bold text-on-surface text-xs font-mono">
-                                    Ref: {mapping.internal_policy_reference}
+                              {}
+                              {(isCritical || isWarning) && (
+                                <div className="flex flex-wrap gap-1 mt-2.5 pt-1.5 border-t border-outline-variant/30 font-mono text-[9px]">
+                                  <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                                    <strong>HASH:</strong> {cHash.substring(0, 8)}
                                   </span>
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                      isCritical
-                                        ? "bg-red-950 text-red-400"
-                                        : isWarning
-                                        ? "bg-amber-950 text-amber-400"
-                                        : "bg-emerald-950 text-emerald-400"
-                                    }`}
-                                  >
-                                    {mapping.status}
+                                  <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                                    <strong>AUTHOR:</strong> {cAuthor}
+                                  </span>
+                                  <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                                    <strong>BRANCH:</strong> {cBranch}
                                   </span>
                                 </div>
-                                <p className="text-on-surface-variant text-[11px] mt-1 font-mono">
-                                  {mapping.delta_evidence}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="font-mono text-xs p-4">
-                          <div className="text-on-surface-variant/30 mb-2"># Snapshot: telemetry-organization-root</div>
-                          <div className="text-on-surface-variant/30 mb-4"># AWS Region: eu-west-1</div>
-                          
-                          <div className="pl-2 border-l border-outline-variant mb-4">
-                            <div className="text-emerald-400">Resource: aws_iam_role.admin_gateway</div>
-                            <div className="pl-4">mfa_enforced = <span className="text-emerald-400">true</span></div>
-                            <div className="pl-4">hardware_token_required = <span className="text-emerald-400">true</span></div>
-                          </div>
-
-                          <div className="p-2 bg-amber-500/5 border-l-2 border-amber-500 mb-4 relative">
-                            <div className="text-amber-400">Resource: aws_rds_cluster.financial_telemetry</div>
-                            <div className="pl-4">engine = "aurora-postgresql"</div>
-                            <div className="pl-4">
-                              storage_encrypted = <span className="text-red-400 bg-red-950/50 px-1">false</span>
-                              <span className="text-on-surface-variant/40 ml-2"># DRIFT DETECTED</span>
+                              )}
                             </div>
-                            <div className="pl-4">kms_key_id = <span className="text-red-400 bg-red-950/50 px-1">null</span></div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="font-mono text-[11px] text-on-surface-variant/80">
+                        <div># Snapshot: telemetry-organization-root</div>
+                        <div className="mb-3"># AWS Region: eu-west-1</div>
+                        <div className="pl-2 border-l-2 border-outline-variant mb-3">
+                          <div className="text-success">Resource: aws_iam_role.admin_gateway</div>
+                          <div className="pl-4">mfa_enforced = <span className="text-success">true</span></div>
+                        </div>
+                        <div className="p-3 bg-error/5 border border-error/30 rounded-lg relative">
+                          <div className="text-error font-bold font-mono">Resource: aws_rds_cluster.financial_telemetry</div>
+                          <div className="pl-4 mt-1">engine = "aurora-postgresql"</div>
+                          <div className="pl-4">
+                            storage_encrypted = <span className="text-error bg-error/15 px-1 rounded font-bold">false</span>
+                            <span className="text-error/40 ml-2"># DRIFT DETECTED</span>
+                          </div>
+                          
+                          {}
+                          <div className="flex flex-wrap gap-1 mt-3 pt-2 border-t border-outline-variant/30 font-mono text-[9px]">
+                            <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                              <strong>HASH:</strong> {gitHash.substring(0, 8)}
+                            </span>
+                            <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                              <strong>AUTHOR:</strong> {gitAuthor}
+                            </span>
+                            <span className="bg-[#030712] border border-outline-variant/60 text-secondary px-2 py-0.5 rounded-full">
+                              <strong>BRANCH:</strong> {gitBranch}
+                            </span>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-
                 </div>
-              </section>
 
-              {/* Dynamic Developer Remediation Terminal */}
-              <Remediation
-                blueprints={telemetry?.report?.drift_remediation_blueprints}
-                onExportPdf={handleExportPdf}
-                isExportingPdf={isExporting}
-              />
-            </>
+              </div>
+
+              {}
+              <div className="lg:col-span-3">
+                <Remediation
+                  blueprints={telemetry?.report?.drift_remediation_blueprints}
+                  onExportPdf={handleExportPdf}
+                  isExportingPdf={isExporting}
+                />
+              </div>
+
+            </div>
           )}
 
-          {/* TAB 2: POLICY INGESTION HUB */}
+          {}
           {activeTab === "ingestion" && (
-            <div className="bg-surface-container border border-outline-variant rounded p-container-padding flex flex-col">
-              <h2 className="font-display-lg text-lg font-bold text-on-surface mb-2">
-                Policy Ingestion Hub
+            <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-container-padding flex flex-col shadow-md">
+              <h2 className="text-sm font-bold text-on-surface mb-1">
+                Policy Ingestion Console
               </h2>
-              <p className="font-body-sm text-xs text-on-surface-variant mb-6">
-                Ingest internal telemetry policies, operational standards, or system guidelines. 
-                Files will be parsed asynchronously, embedded utilizing the `gemini-embedding-001` model (3072 dimensions), 
-                and indexed into our Qdrant vector database.
+              <p className="text-xs text-on-surface-variant mb-6 font-mono">
+                Asynchronous chunking, embedding generation, and Qdrant vector store indexing.
               </p>
               
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter mt-2 border-t border-outline-variant/40 pt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter mt-2 border-t border-outline-variant pt-6">
                 <div className="lg:col-span-2 flex flex-col gap-4">
                   <div>
-                    <label className="block font-label-caps text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">
+                    <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-2">
                       Document ID Slug
                     </label>
                     <input
                       value={docId}
                       onChange={(e) => setDocId(e.target.value)}
-                      className="w-full bg-slate-950 border border-outline-variant rounded p-3 text-xs text-on-surface focus:outline-none focus:border-primary"
+                      className="w-full bg-[#030712] border border-outline-variant rounded-lg p-3 text-xs text-on-surface focus:outline-none focus:border-primary"
                       type="text"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-label-caps text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">
+                    <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-2">
                       Choose policy document (.txt or .pdf)
                     </label>
-                    <div className="border-2 border-dashed border-outline-variant rounded p-8 text-center bg-slate-950 flex flex-col items-center justify-center">
+                    <div className="border-2 border-dashed border-outline-variant rounded-lg p-8 text-center bg-[#030712] flex flex-col items-center justify-center transition-all hover:bg-[#030712]/50">
                       <span className="text-4xl mb-3">📁</span>
                       <input
                         onChange={handleFileChange}
@@ -630,11 +760,11 @@ export default function CisoDashboard() {
                       />
                       <label
                         htmlFor="policy-file-upload"
-                        className="bg-primary-container text-primary border border-primary/50 hover:bg-primary/20 font-label-caps text-[10px] px-4 py-2 rounded cursor-pointer uppercase transition-all mb-2"
+                        className="bg-surface border border-outline-variant hover:border-primary/50 text-on-surface-variant font-mono text-[9px] px-4 py-2 rounded-full cursor-pointer uppercase transition-all mb-2 shadow-sm"
                       >
-                        Select Document
+                        Choose File
                       </label>
-                      <span className="text-xs text-on-surface-variant">
+                      <span className="text-xs text-on-surface-variant font-medium">
                         {selectedFile ? `Selected: ${selectedFile.name}` : "No file selected"}
                       </span>
                     </div>
@@ -643,18 +773,17 @@ export default function CisoDashboard() {
                   <button
                     onClick={handleIngest}
                     disabled={isIngesting}
-                    className="w-full bg-primary text-on-primary font-label-caps text-xs py-3 rounded hover:brightness-115 uppercase transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-primary text-background font-mono text-xs py-3 rounded-full hover:brightness-110 uppercase transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed tracking-wide shadow-md"
                   >
                     {isIngesting ? "Indexing & Ingesting Chunks..." : "Index and Store Policy"}
                   </button>
                 </div>
 
-                {/* Ingestion feed log panel */}
-                <div className="bg-slate-950 border border-outline-variant p-container-padding rounded flex flex-col h-[380px]">
-                  <h3 className="font-label-caps text-[10px] text-on-surface uppercase tracking-wider mb-3">
+                <div className="bg-[#030712]/50 border border-outline-variant p-container-padding rounded-xl flex flex-col h-[380px] shadow-inner">
+                  <h3 className="text-[10px] font-mono text-on-surface uppercase tracking-wider mb-3">
                     Ingestion Process Logs
                   </h3>
-                  <div className="flex-1 overflow-y-auto font-mono text-[11px] text-emerald-400 flex flex-col gap-1.5 pr-2">
+                  <div className="flex-1 overflow-y-auto font-mono text-[11px] text-success flex flex-col gap-1.5 pr-2">
                     {ingestLogs.length === 0 ? (
                       <span className="text-on-surface-variant/40 font-mono">
                         Awaiting ingestion trigger...
@@ -674,28 +803,62 @@ export default function CisoDashboard() {
             </div>
           )}
 
-          {/* TAB 3: LIVE AUDIT CONSOLE */}
+          {}
           {activeTab === "audit" && (
-            <div className="bg-surface-container border border-outline-variant rounded p-container-padding flex flex-col">
-              <h2 className="font-display-lg text-lg font-bold text-on-surface mb-2">
+            <div className="bg-surface/85 backdrop-blur-md border border-outline-variant rounded-xl p-container-padding flex flex-col shadow-md">
+              <h2 className="text-sm font-bold text-on-surface mb-1">
                 Live Audit Console
               </h2>
-              <p className="font-body-sm text-xs text-on-surface-variant mb-6">
-                Paste new regulatory directives, legal bulletins, or compliance changes below. 
-                The stateful agent loop will parse the update, search our active vector index for policy matches, 
-                and draft detailed remediation blueprints.
+              <p className="text-xs text-on-surface-variant mb-6 font-mono">
+                Paste regulatory bulletin payloads and inject active Git CI/CD tracking metrics.
               </p>
               
-              <div className="flex flex-col gap-4 border-t border-outline-variant/40 pt-6">
+              <div className="flex flex-col gap-4 border-t border-outline-variant pt-6">
+                
+                {}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#030712]/60 border border-outline-variant p-4 rounded-xl shadow-sm">
+                  <div className="md:col-span-3 pb-2 border-b border-outline-variant/40 flex justify-between">
+                    <span className="text-[10px] text-primary font-mono uppercase font-bold tracking-widest">Git Commit Blamer Context</span>
+                    <span className="text-on-surface-variant font-mono text-[10px]">CI/CD Metadata</span>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono text-on-surface-variant uppercase tracking-wider mb-1">Commit Hash</label>
+                    <input
+                      value={gitHash}
+                      onChange={(e) => setGitHash(e.target.value)}
+                      className="w-full bg-[#030712] border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary font-mono"
+                      type="text"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono text-on-surface-variant uppercase tracking-wider mb-1">Author Name</label>
+                    <input
+                      value={gitAuthor}
+                      onChange={(e) => setGitAuthor(e.target.value)}
+                      className="w-full bg-[#030712] border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary font-mono"
+                      type="text"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono text-on-surface-variant uppercase tracking-wider mb-1">Target Branch</label>
+                    <input
+                      value={gitBranch}
+                      onChange={(e) => setGitBranch(e.target.value)}
+                      className="w-full bg-[#030712] border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary font-mono"
+                      type="text"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block font-label-caps text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">
+                  <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-2">
                     Raw Regulatory Bulletin Payload
                   </label>
                   <textarea
                     value={bulletinText}
                     onChange={(e) => setBulletinText(e.target.value)}
                     rows={8}
-                    className="w-full bg-slate-950 border border-outline-variant rounded p-4 font-mono text-xs text-on-surface focus:outline-none focus:border-primary resize-none leading-relaxed"
+                    className="w-full bg-[#030712] border border-outline-variant rounded-lg p-4 font-mono text-xs text-on-surface focus:outline-none focus:border-primary resize-none leading-relaxed"
                     placeholder="Paste bulletin payload here..."
                   />
                 </div>
@@ -703,19 +866,19 @@ export default function CisoDashboard() {
                 <button
                   onClick={handleAnalyze}
                   disabled={isAuditing}
-                  className="w-full bg-primary text-on-primary font-label-caps text-xs py-3 rounded hover:brightness-115 uppercase transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-primary text-background font-mono text-xs py-3 rounded-full hover:brightness-110 uppercase transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed tracking-wide shadow-md"
                 >
                   {isAuditing ? "Auditing Gaps..." : "Execute Regulatory Drift Analysis"}
                 </button>
 
-                {/* Progress bar visual indicators */}
+                {}
                 {isAuditing && (
-                  <div className="bg-slate-950 border border-outline-variant p-container-padding rounded mt-2 flex flex-col gap-3">
+                  <div className="bg-[#030712]/50 border border-outline-variant p-container-padding rounded-xl mt-2 flex flex-col gap-3 shadow-inner">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono text-xs text-primary">{auditStatus}</span>
-                      <span className="font-mono text-xs text-on-surface-variant">{auditProgress}%</span>
+                      <span className="font-mono text-xs text-primary font-bold">{auditStatus}</span>
+                      <span className="font-mono text-xs text-on-surface-variant font-semibold">{auditProgress}%</span>
                     </div>
-                    <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-surface h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-primary h-full transition-all duration-500"
                         style={{ width: `${auditProgress}%` }}
@@ -729,22 +892,22 @@ export default function CisoDashboard() {
 
         </main>
 
-        {/* Global Footer status bar */}
-        <footer className="flex justify-between items-center w-full px-gutter py-2 z-40 fixed bottom-0 right-0 border-t border-outline-variant bg-surface-container-lowest md:w-[calc(100%-16rem)] flex-wrap gap-2">
-          <div className="font-label-caps text-[10px] text-on-surface flex items-center gap-1.5 uppercase tracking-wider">
-            <span>🛡️</span>
+        {}
+        <footer className="flex justify-between items-center w-full px-gutter py-2 z-40 fixed bottom-0 right-0 border-t border-outline-variant bg-surface flex-wrap gap-2 shadow-md">
+          <div className="font-mono text-[9px] text-on-surface-variant flex items-center gap-1.5 uppercase tracking-widest">
+            <span className="text-secondary">●</span>
             System Integrity: SECURED
           </div>
-          <div className="flex items-center gap-container-padding font-mono text-[10px] text-on-surface-variant flex-wrap">
+          <div className="flex items-center gap-container-padding font-mono text-[9px] text-on-surface-variant flex-wrap uppercase">
             <span>Data Sync: 100% Valid</span>
             <span className="flex items-center gap-1">
-              <span className="text-emerald-500 text-xs">✔</span>
+              <span className="text-success text-xs">✔</span>
               Log Integrity: Cryptographically Verified
             </span>
           </div>
         </footer>
 
       </div>
-    </>
+    </div>
   );
 }

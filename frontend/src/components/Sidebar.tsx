@@ -6,12 +6,13 @@ import { api } from "@/lib/api";
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  role: string;
+  setRole: (role: string) => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, role, setRole }: SidebarProps) {
   const [gatewayOnline, setGatewayOnline] = useState<boolean | null>(null);
 
-  // Background interval polling task to monitor FastAPI health every 5 seconds
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -32,70 +33,95 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   }, []);
 
   const navItems = [
-    { id: "dashboard", label: "Auditing Dashboard", icon: "📊" },
-    { id: "ingestion", label: "Policy Ingestion Hub", icon: "📥" },
-    { id: "audit", label: "Live Audit Console", icon: "⚡" },
+    { id: "dashboard", label: "Operations HUD", icon: "📊" },
+    { id: "ingestion", label: "Policy Ingestion", icon: "📥" },
+    { id: "audit", label: "Audit Console", icon: "⚡" },
   ];
 
   return (
-    <nav className="hidden md:flex flex-col h-screen w-64 border-r border-outline-variant bg-surface-dim sticky top-0 left-0 z-50 flex-shrink-0">
-      {/* Brand Header */}
-      <div className="p-container-padding border-b border-outline-variant flex items-center gap-component-gap">
-        <div className="w-10 h-10 rounded bg-primary-container border border-primary flex items-center justify-center">
-          <span className="text-xl text-primary font-bold">🛡️</span>
+    <header className="w-full h-16 border-b border-outline-variant bg-surface/80 backdrop-blur-md px-gutter flex items-center justify-between sticky top-0 z-50 shadow-md">
+      
+      {}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-background border border-primary/50 flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+          <span className="text-base text-primary font-bold">🛡️</span>
         </div>
-        <div>
-          <h1 className="font-display-lg text-lg font-bold text-on-surface leading-tight tracking-tight">
+        <div className="hidden sm:block">
+          <h1 className="text-sm font-bold text-on-surface leading-tight tracking-tight uppercase">
             ReguDrift AI
           </h1>
-          <p className="font-label-caps text-[10px] text-on-surface-variant tracking-wider uppercase">
-            Institutional Oversight
+          <p className="text-[9px] text-secondary font-mono tracking-widest uppercase">
+            SOC Console
           </p>
         </div>
       </div>
 
-      {/* Navigation tabs */}
-      <div className="flex-1 overflow-y-auto py-container-padding px-4 flex flex-col gap-unit">
+      {}
+      <div className="flex items-center gap-component-gap">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-component-gap px-density-medium py-3 rounded-none text-left font-label-caps text-xs border-l-4 transition-all focus:outline-none ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs transition-all duration-200 focus:outline-none font-medium ${
                 isActive
-                  ? "bg-surface-container-high border-primary text-primary font-bold"
-                  : "border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  ? "bg-primary/10 text-primary border border-primary/30 shadow-[0_0_8px_rgba(0,240,255,0.08)]"
+                  : "text-on-surface-variant hover:bg-surface-bright hover:text-on-surface border border-transparent"
               }`}
             >
-              <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
+              <span>{item.icon}</span>
+              <span className="hidden md:inline">{item.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Gateway status & Integrity check footer */}
-      <div className="mt-auto border-t border-outline-variant p-container-padding flex flex-col gap-component-gap">
-        <div className="flex items-center gap-2 px-density-medium py-2 border border-outline-variant rounded bg-surface-container-lowest">
+      {}
+      <div className="flex items-center gap-4">
+        {}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded-full bg-background text-[10px] text-on-surface-variant">
           <div
-            className={`w-2.5 h-2.5 rounded-full ${
+            className={`w-1.5 h-1.5 rounded-full ${
               gatewayOnline === true
-                ? "bg-emerald-500 animate-pulse"
+                ? "bg-success shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse"
                 : gatewayOnline === false
-                ? "bg-rose-500 animate-ping"
-                : "bg-amber-500"
+                ? "bg-error shadow-[0_0_6px_rgba(244,63,94,0.6)] animate-ping"
+                : "bg-warning animate-pulse"
             }`}
           ></div>
-          <span className="font-label-caps text-[10px] text-on-surface-variant">
-            Gateway Status: {gatewayOnline === true ? "Online" : gatewayOnline === false ? "Offline" : "Polling"}
+          <span className="font-mono text-[9px]">
+            {gatewayOnline === true ? "GW ONLINE" : gatewayOnline === false ? "GW OFFLINE" : "GW POLLING"}
           </span>
         </div>
-        <div className="flex items-center gap-2 px-density-medium py-2 rounded bg-surface-container-high border-l-4 border-primary">
-          <span className="text-sm">🔒</span>
-          <span className="font-label-caps text-[10px] text-primary">System Secure</span>
+
+        {}
+        <div className="flex items-center bg-background border border-outline-variant p-0.5 rounded-full">
+          <button
+            onClick={() => setRole("Auditor")}
+            className={`px-3 py-1 text-[10px] font-mono uppercase rounded-full transition-all focus:outline-none ${
+              role === "Auditor"
+                ? "bg-secondary text-white font-bold"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+            title="Read-Only Auditor"
+          >
+            Auditor
+          </button>
+          <button
+            onClick={() => setRole("SecOps_Admin")}
+            className={`px-3 py-1 text-[10px] font-mono uppercase rounded-full transition-all focus:outline-none ${
+              role === "SecOps_Admin"
+                ? "bg-primary text-background font-bold"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+            title="Full Write Administrator"
+          >
+            Admin
+          </button>
         </div>
       </div>
-    </nav>
+
+    </header>
   );
 }

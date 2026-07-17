@@ -4,25 +4,58 @@
 
 @layer base {
   body {
-    background-color: #0B0F19; /* Midnight Navy Background */
-    color: #e5e2e2; /* On-Surface White */
+    background-color: #030712; /* Midnight Deep Space Canvas */
+    color: #F8FAFC; /* Pure off-white high-readability text */
+    font-family: var(--font-inter), sans-serif;
   }
 
-  /* Custom high-density scrollbar to align with CISO Command Center aesthetics */
+  /* Custom high-density scrollbar matching the dark Bento HUD aesthetic */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   
   ::-webkit-scrollbar-track {
-    background: #0e0e0f; /* surface-container-lowest */
+    background: #030712; /* Midnight Canvas */
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #46464c; /* outline-variant */
+    background: #1E293B; /* Slate outlines */
+    border-radius: 3px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: #909096; /* outline */
+    background: #8B5CF6; /* Glowing Violet hover highlight */
   }
+}
+
+/* Radar Sonar scanner rotating sweep animation */
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: 50px 50px; /* Center coordinates of the radar SVG */
+}
+
+/* Cyber accent glowing pulse animation */
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.3));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s infinite ease-in-out;
 }

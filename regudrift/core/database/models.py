@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -32,6 +32,7 @@ class AuditRun(Base):
     """
     ORM Model logging historical regulatory drift analysis loop tasks, 
     consolidated metadata, and executive summaries.
+    Includes Git metadata tracking and compliance metrics.
     """
     __tablename__ = "audit_runs"
 
@@ -42,7 +43,14 @@ class AuditRun(Base):
     overall_status: Mapped[str] = mapped_column(String(50), nullable=False)
     timeline_weeks: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    # Core relationship cascading down to individual compliance drift gaps
+    commit_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    author_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    commit_timestamp: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    branch_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    global_health_score: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    total_critical_drifts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     drifts: Mapped[List["ComplianceDrift"]] = relationship(
         "ComplianceDrift",
         back_populates="audit_run",
@@ -51,13 +59,17 @@ class AuditRun(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<AuditRun id={self.id} status='{self.overall_status}' timeline={self.timeline_weeks}w>"
+        return (
+            f"<AuditRun id={self.id} status='{self.overall_status}' health={self.global_health_score}% "
+            f"critical={self.total_critical_drifts} commit='{self.commit_hash or 'N/A'}'>"
+        )
 
 
 class ComplianceDrift(Base):
     """
     ORM Model housing granular regulatory gaps, threat severity scales, 
     and exact engineering remediation instructions.
+    Includes Git metadata tracking.
     """
     __tablename__ = "compliance_drifts"
 
@@ -75,8 +87,15 @@ class ComplianceDrift(Base):
     technical_remediation_blueprint: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    # Direct relational link to parent AuditRun
+    commit_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    author_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    commit_timestamp: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    branch_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     audit_run: Mapped["AuditRun"] = relationship("AuditRun", back_populates="drifts")
 
     def __repr__(self) -> str:
-        return f"<ComplianceDrift id={self.id} run_id={self.audit_run_id} severity='{self.severity_rating}'>"
+        return (
+            f"<ComplianceDrift id={self.id} run_id={self.audit_run_id} severity='{self.severity_rating}' "
+            f"commit='{self.commit_hash or 'N/A'}'>"
+        )
