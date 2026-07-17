@@ -90,44 +90,6 @@ resource "google_cloud_run_v2_service" "frontend_app" {
   }
 }
 
-# Cloud Run V2 definition for the Streamlit UI Command Center
-resource "google_cloud_run_v2_service" "streamlit_ui" {
-  name     = "regudrift-ui"
-  location = var.region
-
-  template {
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/regudrift-repo/ui:latest"
-
-      env {
-        name  = "BACKEND_URL"
-        value = google_cloud_run_v2_service.web_backend.uri
-      }
-
-      ports {
-        container_port = 8501
-      }
-      
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "1024Mi"
-        }
-      }
-    }
-
-    vpc_access {
-      connector = google_vpc_access_connector.connector.id
-      egress    = "PRIVATE_RANGES_ONLY"
-    }
-  }
-
-  traffic {
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent = 100
-  }
-}
-
 # IAM Policies enabling public unauthenticated access to the Frontends and API services
 resource "google_cloud_run_v2_service_iam_member" "noauth_backend" {
   name     = google_cloud_run_v2_service.web_backend.name
@@ -139,13 +101,6 @@ resource "google_cloud_run_v2_service_iam_member" "noauth_backend" {
 resource "google_cloud_run_v2_service_iam_member" "noauth_frontend" {
   name     = google_cloud_run_v2_service.frontend_app.name
   location = google_cloud_run_v2_service.frontend_app.location
-  role     = "roles/run.viewer"
-  member   = "allUsers"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "noauth_ui" {
-  name     = google_cloud_run_v2_service.streamlit_ui.name
-  location = google_cloud_run_v2_service.streamlit_ui.location
   role     = "roles/run.viewer"
   member   = "allUsers"
 }

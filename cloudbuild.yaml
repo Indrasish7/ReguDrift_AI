@@ -20,28 +20,7 @@ steps:
     waitFor: ['build-web']
 
   # ==========================================================
-  # 2. Build and push Streamlit UI container image
-  # ==========================================================
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/ui:latest'
-      - './ui'
-      - '-f'
-      - './ui/Dockerfile'
-    id: 'build-ui'
-    waitFor: ['-'] # Start immediately in parallel
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/ui:latest'
-    id: 'push-ui'
-    waitFor: ['build-ui']
-
-  # ==========================================================
-  # 3. Build and push Next.js Frontend container image
+  # 2. Build and push Next.js Frontend container image
   # ==========================================================
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -52,7 +31,7 @@ steps:
       - '-f'
       - './frontend/Dockerfile'
     id: 'build-frontend'
-    waitFor: ['-'] # Start immediately in parallel
+    waitFor: ['-']
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -61,9 +40,33 @@ steps:
     id: 'push-frontend'
     waitFor: ['build-frontend']
 
+  # ==========================================================
+  # 3. Deploy services concurrently to Cloud Run
+  # ==========================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'regudrift-web'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/web:latest'
+      - '--region=${_REGION}'
+    id: 'deploy-web'
+    depends_on: ['push-web']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'regudrift-frontend'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/frontend:latest'
+      - '--region=${_REGION}'
+    id: 'deploy-frontend'
+    depends_on: ['push-frontend', 'deploy-web']
+
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/web:latest'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/ui:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/frontend:latest'
 
 substitutions:
