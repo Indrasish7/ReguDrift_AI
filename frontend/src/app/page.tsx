@@ -204,6 +204,7 @@ export default function CisoDashboard() {
   const [recordId, setRecordId] = useState<number>(-1);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [historyData, setHistoryData] = useState<AnalyticsHistoryPoint[]>([]);
+  const [healthInfo, setHealthInfo] = useState<any>(null);
 
   const handleSelectCommit = (commit: MockCommit) => {
     setSelectedCommit(commit);
@@ -233,6 +234,18 @@ export default function CisoDashboard() {
   useEffect(() => {
     fetchHistory();
   }, [role]);
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const info = await api.getHealth();
+        setHealthInfo(info);
+      } catch (err) {
+        console.error("Failed to fetch API health info", err);
+      }
+    };
+    fetchHealth();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -507,6 +520,7 @@ export default function CisoDashboard() {
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 16px;
+            page-break-inside: avoid;
           }
           .card-header {
             font-weight: bold;
@@ -571,6 +585,7 @@ export default function CisoDashboard() {
           @media print {
             body {
               margin: 0;
+              padding-bottom: 60px;
             }
             @page {
               margin-top: 15mm;
@@ -586,6 +601,7 @@ export default function CisoDashboard() {
               border-top: 1px solid #1e293b;
               padding-top: 5px;
               text-align: center;
+              background-color: #030712;
             }
           }
         </style>
@@ -610,11 +626,11 @@ export default function CisoDashboard() {
             </tr>
             <tr>
               <td class="label">Vector Index Provider:</td>
-              <td>QDRANT Vector DB Core</td>
+              <td>${healthInfo?.vector_store_provider?.toUpperCase() === "FAISS" ? "FAISS Local Vector Store" : "QDRANT Vector DB Core"}</td>
             </tr>
             <tr>
               <td class="label">System Boundary:</td>
-              <td>PRODUCTION - Secure Docker Enclave</td>
+              <td>${healthInfo?.env === "local" ? "DEVELOPMENT - Local Workstation" : "PRODUCTION - Secure Docker Enclave"}</td>
             </tr>
           </table>
         </div>
@@ -705,7 +721,17 @@ export default function CisoDashboard() {
     return (
       <div className="flex flex-col h-full">
         <div className="flex justify-between items-center pb-2 border-b border-outline-variant mb-3">
-          <span className="text-[9px] font-mono font-bold text-secondary uppercase tracking-widest">Commit Graph</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono font-bold text-secondary uppercase tracking-widest">Commit Graph</span>
+            {role === "SecOps_Admin" && (
+              <button
+                onClick={handleClearDrifts}
+                className="text-[8px] font-mono text-error hover:text-red-400 transition-colors px-2 py-0.5 border border-error/30 rounded bg-error/5 hover:bg-error/10 focus:outline-none"
+              >
+                Clear Logs
+              </button>
+            )}
+          </div>
           <span className="text-[9px] font-mono text-on-surface-variant">Click to blame</span>
         </div>
         <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 relative">
