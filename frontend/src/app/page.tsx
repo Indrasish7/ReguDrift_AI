@@ -159,16 +159,9 @@ export default function CisoDashboard() {
           newStatus = "Partial";
         }
 
-        const blueprints = response.telemetry?.report?.drift_remediation_blueprints || [];
-        let newHealth = 100;
-        blueprints.forEach((bp: any) => {
-          const severity = bp.severity_rating?.toUpperCase();
-          if (severity === "CRITICAL") newHealth -= 15;
-          else if (severity === "HIGH") newHealth -= 10;
-          else if (severity === "MEDIUM") newHealth -= 5;
-          else if (severity === "LOW") newHealth -= 2;
-        });
-        newHealth = Math.max(0, newHealth);
+        const newHealth = response.telemetry?.report?.compliance_health_score !== undefined
+          ? response.telemetry.report.compliance_health_score
+          : 100;
 
         const updatedCommit = {
           hash: gitHash,
@@ -504,16 +497,9 @@ export default function CisoDashboard() {
 
   const getOverallHealth = () => {
     if (!telemetry || !telemetry.report) return selectedCommit.health;
-    const blueprints = telemetry.report.drift_remediation_blueprints || [];
-    let score = 100;
-    blueprints.forEach((bp) => {
-      const severity = bp.severity_rating?.toUpperCase();
-      if (severity === "CRITICAL") score -= 15;
-      else if (severity === "HIGH") score -= 10;
-      else if (severity === "MEDIUM") score -= 5;
-      else if (severity === "LOW") score -= 2;
-    });
-    return Math.max(0, score);
+    return telemetry.report.compliance_health_score !== undefined
+      ? telemetry.report.compliance_health_score
+      : selectedCommit.health;
   };
 
   const renderSonarScanner = () => {

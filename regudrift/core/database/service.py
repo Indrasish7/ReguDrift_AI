@@ -96,21 +96,11 @@ class AuditPersistenceService:
             else:
                 overall_status = "Compliant"
 
-            total_critical = 0
-            score = 100
-            for blueprint in report.drift_remediation_blueprints:
-                sev = blueprint.severity_rating.value.upper()
-                if sev == "CRITICAL":
-                    total_critical += 1
-                    score -= 15
-                elif sev == "HIGH":
-                    total_critical += 1
-                    score -= 10
-                elif sev == "MEDIUM":
-                    score -= 5
-                elif sev == "LOW":
-                    score -= 2
-
+            total_critical = sum(
+                1 for blueprint in report.drift_remediation_blueprints 
+                if blueprint.severity_rating.value.upper() in ("CRITICAL", "HIGH")
+            )
+            score = getattr(report, "compliance_health_score", 100)
             score = max(0, min(100, score))
 
             audit_run = AuditRun(

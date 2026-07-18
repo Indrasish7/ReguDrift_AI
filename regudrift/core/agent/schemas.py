@@ -124,6 +124,12 @@ class FinalReport(BaseModel):
         ...,
         description="Estimated overall engineering effort to resolve all gaps in weeks."
     )
+    compliance_health_score: int = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Holistic compliance health score evaluated by the AI based on the audit findings (0 = completely non-compliant/unsecured, 100 = fully aligned/compliant)."
+    )
 
 
 class AgentStatePayload(BaseModel):
