@@ -33,17 +33,18 @@ export default function CisoDashboard() {
     `SEBI CYBERSECURITY DIRECTIVE: REFORMATTED AUDIT AND TRACE LOG MANAGEMENT 2026\nCHAPTER III: REPOSITORY INTEGRITY AND CRYPTOGRAPHIC SAFEGUARDS\nSection 4.2: Cryptographical Log Protection\nTo prevent insider tampering, all core transaction and system access log aggregates must be cryptographically protected from unauthorized alterations.\n(a) Centralized log streams must be signed at the application level using HMAC-SHA256 signatures before being written to disk.\n(b) Storage buckets containing log aggregates must utilize dedicated Customer-Managed Keys (CMK) via Key Management Services (KMS) with automated annual rotation enabled. Default provider-managed keys are no longer sufficient for compliance.`
   );
   
-  const mockCommits: MockCommit[] = [
+  const initialCommits: MockCommit[] = [
     { hash: "a1b2c3d4e5f67890", author: "Dev DevOps", branch: "release/v1.1", timestamp: "2026-07-17T12:00:00Z", status: "Non-Compliant", health: 45 },
     { hash: "f8b9c0d1e2f3a4b5", author: "Alice Auditor", branch: "main", timestamp: "2026-07-16T15:30:00Z", status: "Compliant", health: 100 },
     { hash: "e4f5a6b7c8d9e0f1", author: "Bob Builder", branch: "feature/logging", timestamp: "2026-07-15T09:15:00Z", status: "Partial", health: 75 },
     { hash: "cd78ef90ab12cd34", author: "Charlie Coder", branch: "patch/rotation", timestamp: "2026-07-14T17:45:00Z", status: "Non-Compliant", health: 60 }
   ];
 
-  const [selectedCommit, setSelectedCommit] = useState<MockCommit>(mockCommits[0]);
-  const [gitHash, setGitHash] = useState<string>(mockCommits[0].hash);
-  const [gitAuthor, setGitAuthor] = useState<string>(mockCommits[0].author);
-  const [gitBranch, setGitBranch] = useState<string>(mockCommits[0].branch);
+  const [commits, setCommits] = useState<MockCommit[]>(initialCommits);
+  const [selectedCommit, setSelectedCommit] = useState<MockCommit>(initialCommits[0]);
+  const [gitHash, setGitHash] = useState<string>(initialCommits[0].hash);
+  const [gitAuthor, setGitAuthor] = useState<string>(initialCommits[0].author);
+  const [gitBranch, setGitBranch] = useState<string>(initialCommits[0].branch);
   
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [auditProgress, setAuditProgress] = useState<number>(0);
@@ -148,6 +149,42 @@ export default function CisoDashboard() {
         setAuditStatus("Analysis complete!");
         setTelemetry(response.telemetry);
         setRecordId(response.relational_record_id);
+        
+        const matrix = response.telemetry?.report?.compliance_drift_matrix || [];
+        const statuses = matrix.map((m: any) => m.status);
+        let newStatus: "Compliant" | "Partial" | "Non-Compliant" = "Compliant";
+        let newHealth = 100;
+        if (statuses.includes("Non-Compliant")) {
+          newStatus = "Non-Compliant";
+          newHealth = 45;
+        } else if (statuses.includes("Partial")) {
+          newStatus = "Partial";
+          newHealth = 75;
+        }
+
+        const updatedCommit = {
+          hash: gitHash,
+          author: gitAuthor,
+          branch: gitBranch,
+          timestamp: new Date().toISOString(),
+          status: newStatus,
+          health: newHealth
+        };
+
+        setCommits((prevCommits) => {
+          const index = prevCommits.findIndex(
+            (c) => c.hash.substring(0, 8) === gitHash.substring(0, 8) || c.hash === gitHash
+          );
+          if (index !== -1) {
+            const newCommits = [...prevCommits];
+            newCommits[index] = updatedCommit;
+            return newCommits;
+          } else {
+            return [updatedCommit, ...prevCommits];
+          }
+        });
+        setSelectedCommit(updatedCommit);
+
         setIsAuditing(false);
         fetchHistory();
         setActiveTab("dashboard");
@@ -513,7 +550,7 @@ export default function CisoDashboard() {
           {}
           <div className="absolute left-[13px] top-4 bottom-4 w-[2px] bg-outline-variant/60"></div>
           
-          {mockCommits.map((commit, idx) => {
+          {commits.map((commit, idx) => {
             const isSelected = selectedCommit.hash === commit.hash;
             const nodeColor = commit.status === "Compliant" ? "bg-success shadow-[0_0_8px_#10B981]" : commit.status === "Partial" ? "bg-warning shadow-[0_0_8px_#FBBC05]" : "bg-error shadow-[0_0_8px_#F43F5E]";
             return (
