@@ -203,7 +203,8 @@ class AgenticOrchestrationCarrier:
                     executive_summary="Critical compliance gaps detected regarding SEBI Clause 4.2 directive for transaction log management. AWS RDS storage volume encryption is disabled and log stream signatures are missing.",
                     compliance_drift_matrix=mock_gaps,
                     drift_remediation_blueprints=mock_blueprints,
-                    remediation_timeline_weeks=2
+                    remediation_timeline_weeks=2,
+                    compliance_health_score=75
                 )
                 
                 state_payload = AgentStatePayload(
