@@ -153,14 +153,22 @@ export default function CisoDashboard() {
         const matrix = response.telemetry?.report?.compliance_drift_matrix || [];
         const statuses = matrix.map((m: any) => m.status);
         let newStatus: "Compliant" | "Partial" | "Non-Compliant" = "Compliant";
-        let newHealth = 100;
         if (statuses.includes("Non-Compliant")) {
           newStatus = "Non-Compliant";
-          newHealth = 45;
         } else if (statuses.includes("Partial")) {
           newStatus = "Partial";
-          newHealth = 75;
         }
+
+        const blueprints = response.telemetry?.report?.drift_remediation_blueprints || [];
+        let newHealth = 100;
+        blueprints.forEach((bp: any) => {
+          const severity = bp.severity_rating?.toUpperCase();
+          if (severity === "CRITICAL") newHealth -= 15;
+          else if (severity === "HIGH") newHealth -= 10;
+          else if (severity === "MEDIUM") newHealth -= 5;
+          else if (severity === "LOW") newHealth -= 2;
+        });
+        newHealth = Math.max(0, newHealth);
 
         const updatedCommit = {
           hash: gitHash,
@@ -496,10 +504,16 @@ export default function CisoDashboard() {
 
   const getOverallHealth = () => {
     if (!telemetry || !telemetry.report) return selectedCommit.health;
-    const statuses = telemetry.report.compliance_drift_matrix.map((m) => m.status);
-    if (statuses.includes("Non-Compliant")) return 45;
-    if (statuses.includes("Partial")) return 75;
-    return 100;
+    const blueprints = telemetry.report.drift_remediation_blueprints || [];
+    let score = 100;
+    blueprints.forEach((bp) => {
+      const severity = bp.severity_rating?.toUpperCase();
+      if (severity === "CRITICAL") score -= 15;
+      else if (severity === "HIGH") score -= 10;
+      else if (severity === "MEDIUM") score -= 5;
+      else if (severity === "LOW") score -= 2;
+    });
+    return Math.max(0, score);
   };
 
   const renderSonarScanner = () => {
