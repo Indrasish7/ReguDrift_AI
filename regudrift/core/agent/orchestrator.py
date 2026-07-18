@@ -330,7 +330,7 @@ class AgenticOrchestrationCarrier:
             f"- clause_at_risk: Target clause/section.\n"
             f"- severity_rating: LOW, MEDIUM, HIGH, CRITICAL.\n"
             f"- clarity_score: Clarity score (0-100).\n"
-            f"- technical_remediation_blueprint: Explicit database schema updates, system changes, or policy edits.\n\n"
+            f"- technical_remediation_blueprint: Provide the actual, executable code required for remediation. For infrastructure-level gaps, write clean, direct Terraform IaC configuration code. For application-level or logical controls, write clean Python scripts. Do not write generic prose or plain text; write direct executable code blocks.\n\n"
             f"Summarize the findings in an executive summary and evaluate the engineering timeline in weeks."
         )
 
