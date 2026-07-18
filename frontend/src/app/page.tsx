@@ -368,8 +368,24 @@ export default function CisoDashboard() {
             text-align: center;
           }
           @media print {
-            body { margin: 20px; }
-            footer { position: fixed; bottom: 0; width: 100%; }
+            body {
+              margin: 0;
+            }
+            @page {
+              margin-top: 15mm;
+              margin-bottom: 20mm;
+              margin-left: 15mm;
+              margin-right: 15mm;
+            }
+            footer {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              border-top: 1px solid #1e293b;
+              padding-top: 5px;
+              text-align: center;
+            }
           }
         </style>
       </head>
