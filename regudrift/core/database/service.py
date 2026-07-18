@@ -159,16 +159,28 @@ class AuditPersistenceService:
         Returns a time-series ready list of data tracking health and drifts.
         """
         try:
-            query = text("""
-                SELECT 
-                    strftime('%Y-%m-%d', timestamp) AS audit_date,
-                    AVG(global_health_score) AS avg_health_score,
-                    SUM(total_critical_drifts) AS total_critical,
-                    MAX(timestamp) AS latest_timestamp
-                FROM audit_runs
-                GROUP BY audit_date
-                ORDER BY audit_date ASC
-            """)
+            if "postgresql" in settings.DATABASE_URL:
+                query = text("""
+                    SELECT 
+                        to_char(timestamp, 'YYYY-MM-DD') AS audit_date,
+                        AVG(global_health_score) AS avg_health_score,
+                        SUM(total_critical_drifts) AS total_critical,
+                        MAX(timestamp) AS latest_timestamp
+                    FROM audit_runs
+                    GROUP BY audit_date
+                    ORDER BY audit_date ASC
+                """)
+            else:
+                query = text("""
+                    SELECT 
+                        strftime('%Y-%m-%d', timestamp) AS audit_date,
+                        AVG(global_health_score) AS avg_health_score,
+                        SUM(total_critical_drifts) AS total_critical,
+                        MAX(timestamp) AS latest_timestamp
+                    FROM audit_runs
+                    GROUP BY audit_date
+                    ORDER BY audit_date ASC
+                """)
             result = await self.db.execute(query)
             rows = result.fetchall()
             return [
