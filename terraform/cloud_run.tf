@@ -59,7 +59,7 @@ resource "google_cloud_run_v2_service" "web_backend" {
 
 # Cloud Run V2 definition for the Next.js Frontend Web Application
 resource "google_cloud_run_v2_service" "frontend_app" {
-  name     = "regudrift-frontend"
+  name     = "regudrift-console"
   location = var.region
 
   template {

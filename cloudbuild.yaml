@@ -59,11 +59,12 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'regudrift-frontend'
+      - 'regudrift-console'
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/frontend:latest'
       - '--region=${_REGION}'
-    id: 'deploy-frontend'
+    id: 'deploy-console'
     waitFor: ['push-frontend', 'deploy-web']
+
 
 
 images:
