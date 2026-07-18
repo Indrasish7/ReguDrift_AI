@@ -1,8 +1,21 @@
 import axios from "axios";
 
-const API_BASE_URL = typeof window !== "undefined" 
-  ? `${window.location.protocol}//${window.location.hostname}:8000`
-  : "http://localhost:8000";
+const getBaseUrl = (): string => {
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
+      return "http://localhost:8000";
+    }
+    if (hostname.includes("regudrift-console-")) {
+      return `${window.location.protocol}//${hostname.replace("regudrift-console-", "regudrift-web-")}`;
+    }
+    return process.env.NEXT_PUBLIC_API_URL || `${window.location.protocol}//${hostname}`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+};
+
+const API_BASE_URL = getBaseUrl();
+
 
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
