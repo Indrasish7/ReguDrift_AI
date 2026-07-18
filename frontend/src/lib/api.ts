@@ -70,6 +70,7 @@ export interface TelemetryPayload {
     compliance_drift_matrix: ComplianceGapMapping[];
     drift_remediation_blueprints: DriftRemediationBlueprint[];
     remediation_timeline_weeks: number;
+    compliance_health_score?: number;
   } | null;
 }
 

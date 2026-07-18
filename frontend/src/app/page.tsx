@@ -40,6 +40,155 @@ export default function CisoDashboard() {
     { hash: "cd78ef90ab12cd34", author: "Charlie Coder", branch: "patch/rotation", timestamp: "2026-07-14T17:45:00Z", status: "Non-Compliant", health: 60 }
   ];
 
+  const initialTelemetry: Record<string, TelemetryPayload> = {
+    "a1b2c3d4e5f67890": {
+      state: "FinalReport",
+      plan: null,
+      context: null,
+      analysis: null,
+      report: {
+        executive_summary: "Critical compliance gaps detected regarding SEBI Clause 4.2 directive for transaction log management. AWS RDS storage volume encryption is disabled and log stream signatures are missing.",
+        compliance_drift_matrix: [
+          {
+            regulatory_clause: "Clause 4.2(a): Core transaction access logs must be cryptographically signed at the application level.",
+            internal_policy_reference: "sebi_logs_policy_test: Section 2",
+            status: "Non-Compliant",
+            delta_evidence: "AWS infrastructure telemetry registers database log storage has no active application-level cryptographic signing configuration active."
+          },
+          {
+            regulatory_clause: "Clause 4.2(b): Log storage volumes must utilize dedicated KMS CMK with annual auto-rotation.",
+            internal_policy_reference: "sebi_logs_policy_test: Section 3",
+            status: "Non-Compliant",
+            delta_evidence: "AWS RDS database cluster configuration registers storage_encrypted=false and kms_key_id=null. No customer-managed key is utilized."
+          }
+        ],
+        drift_remediation_blueprints: [
+          {
+            clause_at_risk: "Clause 4.2(a): Application level log signing",
+            severity_rating: "HIGH" as any,
+            clarity_score: 85,
+            technical_remediation_blueprint: "import hmac\nimport hashlib\nimport os\n\ndef sign_log_payload(payload: str) -> str:\n    # Computes HMAC-SHA256 log signature before write\n    signature = hmac.new(SECRET_KEY, payload.encode('utf-8'), hashlib.sha256)\n    return f'SIG={signature.hexdigest()} | MSG={payload}'",
+            commit_hash: "a1b2c3d4e5f67890",
+            author_name: "Dev DevOps",
+            branch_name: "release/v1.1"
+          },
+          {
+            clause_at_risk: "Clause 4.2(b): KMS CMK log storage",
+            severity_rating: "CRITICAL" as any,
+            clarity_score: 95,
+            technical_remediation_blueprint: "resource \"aws_kms_key\" \"telemetry_encryption\" {\n  description             = \"KMS key for financial telemetry DB\"\n  enable_key_rotation     = true\n}\n\nresource \"aws_rds_cluster\" \"financial_telemetry\" {\n  cluster_identifier      = \"aurora-telemetry-cluster\"\n  storage_encrypted     = true\n  kms_key_id            = aws_kms_key.telemetry_encryption.arn\n}",
+            commit_hash: "a1b2c3d4e5f67890",
+            author_name: "Dev DevOps",
+            branch_name: "release/v1.1"
+          }
+        ],
+        remediation_timeline_weeks: 2,
+        compliance_health_score: 75
+      }
+    },
+    "f8b9c0d1e2f3a4b5": {
+      state: "FinalReport",
+      plan: null,
+      context: null,
+      analysis: null,
+      report: {
+        executive_summary: "Comprehensive compliance audit registers zero active security drifts or non-compliances. Internal controls match all regulatory requirements perfectly.",
+        compliance_drift_matrix: [
+          {
+            regulatory_clause: "Clause 4.2(a): Centralized log streams must be signed at the application level.",
+            internal_policy_reference: "sebi_logs_policy_test: Section 2",
+            status: "Compliant",
+            delta_evidence: "Telemetry logs verify active SHA-256 signatures are generated and verified on every write."
+          }
+        ],
+        drift_remediation_blueprints: [],
+        remediation_timeline_weeks: 0,
+        compliance_health_score: 100
+      }
+    },
+    "e4f5a6b7c8d9e0f1": {
+      state: "FinalReport",
+      plan: null,
+      context: null,
+      analysis: null,
+      report: {
+        executive_summary: "Partial compliance verified. Network isolation controls are fully implemented, but hardware-backed multi-factor authentication (MFA) is missing for console logins.",
+        compliance_drift_matrix: [
+          {
+            regulatory_clause: "Clause 4.1.2: Enforce hardware-backed MFA keys for admin operations.",
+            internal_policy_reference: "access_policy: Section 1",
+            status: "Partial",
+            delta_evidence: "Admin console login logs verify software MFA is active, but hardware-backed security keys are not enforced."
+          },
+          {
+            regulatory_clause: "Clause 4.1.4: Strictly segment the network to isolate the core transaction database.",
+            internal_policy_reference: "network_policy: Section 5",
+            status: "Compliant",
+            delta_evidence: "VPC flow registers database subnet is isolated with zero public ingress routes."
+          }
+        ],
+        drift_remediation_blueprints: [
+          {
+            clause_at_risk: "Clause 4.1.2: Multi-Factor Authentication",
+            severity_rating: "MEDIUM" as any,
+            clarity_score: 90,
+            technical_remediation_blueprint: "# Configure AWS IAM policy to enforce MFA with WebAuthn hardware keys\nresource \"aws_iam_policy\" \"enforce_mfa_webauthn\" {\n  name        = \"EnforceWebAuthnMFA\"\n  description = \"Only allow admin operations when authenticated with FIDO/WebAuthn MFA keys\"\n  policy      = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{\n      Sid    = \"BlockNonMFA\"\n      Effect = \"Deny\"\n      Action = \"*\"\n      Resource = \"*\"\n      Condition = {\n        Null = { \"aws:MultiFactorAuthPresent\" = \"true\" }\n      }\n    }]\n  })\n}",
+            commit_hash: "e4f5a6b7c8d9e0f1",
+            author_name: "Bob Builder",
+            branch_name: "feature/logging"
+          }
+        ],
+        remediation_timeline_weeks: 1,
+        compliance_health_score: 75
+      }
+    },
+    "cd78ef90ab12cd34": {
+      state: "FinalReport",
+      plan: null,
+      context: null,
+      analysis: null,
+      report: {
+        executive_summary: "Critical compliance failure. Direct database public access is open to all internet traffic, and transaction logs are stored unencrypted in public buckets.",
+        compliance_drift_matrix: [
+          {
+            regulatory_clause: "Clause 4.1.3: Sensitive transaction logs must be encrypted using dedicated customer-managed keys (CMK).",
+            internal_policy_reference: "storage_policy: Section 4",
+            status: "Non-Compliant",
+            delta_evidence: "S3 buckets 'regudrift-transaction-logs' do not have default encryption active, exposing raw log streams in plaintext."
+          },
+          {
+            regulatory_clause: "Clause 4.1.4: Strictly segment network to isolate database.",
+            internal_policy_reference: "network_policy: Section 5",
+            status: "Non-Compliant",
+            delta_evidence: "VPC security group 'db-sg' allows inbound port 5432 directly from 0.0.0.0/0 (public internet)."
+          }
+        ],
+        drift_remediation_blueprints: [
+          {
+            clause_at_risk: "Clause 4.1.3: Data Encryption at Rest",
+            severity_rating: "HIGH" as any,
+            clarity_score: 85,
+            technical_remediation_blueprint: "# Enable default encryption for S3 buckets using KMS CMK\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"logs_encryption\" {\n  bucket = \"regudrift-transaction-logs\"\n  rule {\n    apply_server_side_encryption_by_default {\n      kms_master_key_id = \"arn:aws:kms:us-east-1:123456789012:key/your-key\"\n      sse_algorithm     = \"aws:kms\"\n    }\n  }\n}",
+            commit_hash: "cd78ef90ab12cd34",
+            author_name: "Charlie Coder",
+            branch_name: "patch/rotation"
+          },
+          {
+            clause_at_risk: "Clause 4.1.4: Database Network Isolation",
+            severity_rating: "CRITICAL" as any,
+            clarity_score: 95,
+            technical_remediation_blueprint: "# Remove public ingress and isolate DB security group\nresource \"aws_security_group_rule\" \"restrict_db_ingress\" {\n  type              = \"ingress\"\n  from_port         = 5432\n  to_port           = 5432\n  protocol          = \"tcp\"\n  security_group_id = \"sg-db123456\"\n  cidr_blocks       = [\"10.0.1.0/24\"] # Only allow private app subnet range\n}",
+            commit_hash: "cd78ef90ab12cd34",
+            author_name: "Charlie Coder",
+            branch_name: "patch/rotation"
+          }
+        ],
+        remediation_timeline_weeks: 3,
+        compliance_health_score: 60
+      }
+    }
+  };
+
   const [commits, setCommits] = useState<MockCommit[]>(initialCommits);
   const [selectedCommit, setSelectedCommit] = useState<MockCommit>(initialCommits[0]);
   const [gitHash, setGitHash] = useState<string>(initialCommits[0].hash);
@@ -50,7 +199,8 @@ export default function CisoDashboard() {
   const [auditProgress, setAuditProgress] = useState<number>(0);
   const [auditStatus, setAuditStatus] = useState<string>("");
   
-  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
+  const [telemetryMap, setTelemetryMap] = useState<Record<string, TelemetryPayload>>(initialTelemetry);
+  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(initialTelemetry["a1b2c3d4e5f67890"]);
   const [recordId, setRecordId] = useState<number>(-1);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [historyData, setHistoryData] = useState<AnalyticsHistoryPoint[]>([]);
@@ -60,6 +210,15 @@ export default function CisoDashboard() {
     setGitHash(commit.hash);
     setGitAuthor(commit.author);
     setGitBranch(commit.branch);
+    
+    const key = Object.keys(telemetryMap).find(
+      (k) => k.substring(0, 8) === commit.hash.substring(0, 8) || k === commit.hash
+    );
+    if (key && telemetryMap[key]) {
+      setTelemetry(telemetryMap[key]);
+    } else {
+      setTelemetry(null);
+    }
   };
 
   const fetchHistory = async () => {
@@ -148,6 +307,10 @@ export default function CisoDashboard() {
         setAuditProgress(100);
         setAuditStatus("Analysis complete!");
         setTelemetry(response.telemetry);
+        setTelemetryMap((prevMap) => ({
+          ...prevMap,
+          [gitHash]: response.telemetry
+        }));
         setRecordId(response.relational_record_id);
         
         const matrix = response.telemetry?.report?.compliance_drift_matrix || [];
