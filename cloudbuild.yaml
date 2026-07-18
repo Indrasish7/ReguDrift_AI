@@ -52,7 +52,7 @@ steps:
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/web:latest'
       - '--region=${_REGION}'
     id: 'deploy-web'
-    depends_on: ['push-web']
+    waitFor: ['push-web']
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
@@ -63,7 +63,8 @@ steps:
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/frontend:latest'
       - '--region=${_REGION}'
     id: 'deploy-frontend'
-    depends_on: ['push-frontend', 'deploy-web']
+    waitFor: ['push-frontend', 'deploy-web']
+
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/web:latest'
