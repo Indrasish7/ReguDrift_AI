@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from regudrift.core.agent.schemas import FinalReport
 from regudrift.core.database.models import AuditRun, ComplianceDrift, DocumentRecord
+from regudrift.config.settings import settings
 
 logger = logging.getLogger("regudrift.database.service")
 
