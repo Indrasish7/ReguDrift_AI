@@ -41,7 +41,7 @@ steps:
     waitFor: ['build-frontend']
 
   # ==========================================================
-  # 3. Deploy services concurrently to Cloud Run
+  # 3. Deploy services concurrently to Cloud Run (Zero-Cost Serverless Mode)
   # ==========================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
@@ -51,6 +51,10 @@ steps:
       - 'regudrift-web'
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/web:latest'
       - '--region=${_REGION}'
+      - '--min-instances=0'
+      - '--max-instances=1'
+      - '--set-env-vars=VECTOR_STORE_PROVIDER=faiss,ENVIRONMENT=production'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest'
     id: 'deploy-web'
     waitFor: ['push-web']
 
@@ -62,6 +66,8 @@ steps:
       - 'regudrift-console'
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/regudrift-repo/frontend:latest'
       - '--region=${_REGION}'
+      - '--min-instances=0'
+      - '--max-instances=1'
     id: 'deploy-console'
     waitFor: ['push-frontend', 'deploy-web']
 
