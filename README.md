@@ -30,8 +30,8 @@ The system automates the detection of compliance gaps, calculates drift indices,
 ReguDrift AI is deployed in a fully production-hardened network environment on Google Cloud:
 
 ### Active Deployment Endpoints
-*   **Production Frontend Console (Next.js):** [https://regudrift-console-567903226702.asia-south1.run.app](https://regudrift-console-567903226702.asia-south1.run.app)
-*   **Production REST API Gateway (FastAPI):** [https://regudrift-web-567903226702.asia-south1.run.app](https://regudrift-web-567903226702.asia-south1.run.app)
+*   **Production Frontend Console (Next.js):** [https://regudrift-console-78934529892.asia-south1.run.app/](https://regudrift-console-78934529892.asia-south1.run.app/)
+*   **Production REST API Gateway (FastAPI):** [https://regudrift-web-78934529892.asia-south1.run.app/](https://regudrift-web-78934529892.asia-south1.run.app/)
 
 ### Infrastructure Specifications
 *   **Compute Instance (Qdrant DB):** An `e2-medium` Container-Optimized OS VM running in private subnet `10.0.1.0/24`, with a 30GB Persistent SSD storage mount.
