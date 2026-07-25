@@ -22,6 +22,11 @@ FROM python:3.12-slim AS runner
 
 WORKDIR /app
 
+# Install runtime C++ OpenMP library for FAISS vector engine
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Establish system user accounts for runtime hardening (no-root container execution)
 RUN groupadd -g 10001 regugroup && \
     useradd -u 10001 -g regugroup -m -s /bin/bash reguuser
