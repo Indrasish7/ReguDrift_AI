@@ -37,7 +37,7 @@ class InMemoryVectorStore:
     def add_documents(self, chunks: List[DocumentChunk], embeddings: List[List[float]]) -> List[str]:
         added_hashes = []
         for chunk, emb in zip(chunks, embeddings):
-            chunk_hash = chunk.chunk_hash
+            chunk_hash = chunk.id
             vec = np.array(emb, dtype=np.float32)
             norm = np.linalg.norm(vec)
             if norm > 0:
@@ -207,7 +207,7 @@ class LocalFAISSService(BaseVectorService):
         added_hashes = []
         
         for idx, chunk in enumerate(chunks):
-            chunk_hash = chunk.chunk_hash
+            chunk_hash = chunk.id
             
             if chunk_hash in self.hash_to_id_map:
                 existing_id = self.hash_to_id_map[chunk_hash]
