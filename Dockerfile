@@ -45,5 +45,5 @@ EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
 
-# Expose server globally using non-shell CMD specification
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose server globally, respecting Cloud Run $PORT environment variable
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
